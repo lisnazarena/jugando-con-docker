@@ -6,7 +6,7 @@ El trabajo está en construcción. La fecha de entrega es el 3 de noviembre de 2
 
 ## Estado
 
-Hoy el repositorio tiene el plan, esta descripción y la configuración para no subir secretos. Todavía no hay pantalla, servidor ni contenedores.
+La pantalla ya se puede abrir en el navegador. Todavía no hay servidor ni contenedores. Las palabras viven solo en esa pestaña: al recargar, desaparecen.
 
 ## Camino elegido
 
@@ -28,9 +28,19 @@ Si un contenedor se detiene, Docker lo vuelve a iniciar. Eso es una recuperació
 
 Node.js hace falta el día que empecemos el sitio y la API. Los comandos de instalación se agregan acá cuando los hayamos probado.
 
-## Cómo se va a ejecutar
+## Ver la pantalla
 
-Todavía no se puede levantar la aplicación. El comando previsto, más adelante, es:
+Hace falta Node.js. En esta máquina ya está instalado.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abrí http://127.0.0.1:5173
+
+Más adelante, con Docker, el comando previsto es:
 
 ```bash
 docker compose up --build
