@@ -176,8 +176,10 @@ Orden previsto el sábado 24:
 2. Crear `.gitignore` y `.env.example`.
 3. Configurar el nombre de autor de Git (el correo ya está definido en esta máquina).
 4. Crear el repositorio local.
-5. Crear en GitHub un repositorio público `jugando-con-docker`.
+5. Crear en GitHub el repositorio `jugando-con-docker`.
 6. Conectarlos y subir el primer commit con un README.
+
+El 23 de octubre el repositorio remoto quedó en `https://github.com/lisnazarena/jugando-con-docker`, rama `main`, commit `18dad7b`. Se mantiene **privado** durante el desarrollo. Antes de la entrega se decide si pasa a público o si el profesor entra como colaborador.
 
 No se suben `.env`, contraseñas, `node_modules`, compilados, datos de PostgreSQL ni volúmenes. Antes de cada `git push` se revisa que no haya secretos. Los comandos de publicación se explican y los ejecutás vos; no se publican solos.
 
@@ -218,7 +220,7 @@ Commit: todavía no. El repositorio se crea el sábado.
 
 ### Sábado 24 de octubre — Git, GitHub y esqueleto
 
-Objetivo: tener un repositorio local, un remoto público y los archivos que evitan subir secretos.
+Objetivo: tener un repositorio local, el remoto en GitHub y los archivos que evitan subir secretos. El remoto queda privado hasta la entrega.
 
 Tareas:
 
@@ -228,7 +230,7 @@ Tareas:
 - Crear el repositorio en GitHub y conectar el remoto.
 - Subir la primera versión cuando vos confirmes el comando.
 
-Criterio de aceptación: `git status` está limpio, `git log` muestra el primer commit y el repositorio se ve en el navegador.
+Criterio de aceptación: `git status` está limpio, `git log` muestra el primer commit y el repositorio se abre en el navegador con la cuenta de GitHub. Mientras sea privado, no se ve sin iniciar sesión.
 
 ### Domingo 25 de octubre — Frontend
 
