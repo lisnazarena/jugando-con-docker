@@ -1,0 +1,42 @@
+# Dependencias de Node.js
+node_modules/
+
+# Secretos. .env.example sí se versiona.
+.env
+.env.*
+!.env.example
+
+# Compilación de React y del backend
+frontend/dist/
+frontend/build/
+backend/dist/
+*.tsbuildinfo
+
+# Logs y archivos temporales
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Datos locales de PostgreSQL, volúmenes y copias de seguridad
+postgres-data/
+db/data/
+**/pgdata/
+backups/
+*.sql.gz
+*.dump
+volumes/
+
+# Configuración local de Compose que puede tener claves
+docker-compose.override.yml
+
+# Cobertura de pruebas
+coverage/
+.nyc_output/
+
+# Ajustes personales del editor
+.idea/
+.vscode/
