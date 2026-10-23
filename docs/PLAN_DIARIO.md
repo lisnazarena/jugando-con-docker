@@ -234,13 +234,13 @@ Criterio de aceptación: `git status` está limpio, `git log` muestra el primer 
 
 ### Domingo 25 de octubre — Frontend
 
-Objetivo: una pantalla que muestre una pregunta y un formulario para enviar una palabra.
+Objetivo: una pantalla que muestre una pregunta, un formulario para enviar una palabra y la nube. Sin título de presentación. El aspecto es el de una ventana de Windows 95: fondo verde azulado, panel gris, bordes en relieve y tipografía en píxeles. Las palabras, al juntarse, arman la nube: no hay un dibujo con borde alrededor. Lo más repetido queda más grande y más al centro. La formación se mueve en bucle. Quien tenga activada la opción de reducir movimiento la ve quieta.
 
 Tareas:
 
 - Crear el proyecto React con Vite dentro de `frontend/`.
-- Agregar Tailwind.
-- Maquetar la pregunta, el campo de texto, el botón y un lugar reservado para la nube.
+- Agregar Tailwind y una fuente píxel libre.
+- Maquetar la pregunta, el campo de texto, el botón y la nube, con controles de tamaño entero para que el píxel no se deforme.
 - Abrirla en el navegador y probarla en un ancho de celular.
 
 Criterio de aceptación: la pantalla carga, el formulario no se envía a ningún servidor todavía y se entiende en una ventana angosta. Los estados de carga y error se preparan en serio el lunes, cuando exista el servidor.

@@ -1,0 +1,197 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  font-family: "Pixelify Sans", ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+/* steps() sostiene cada posición, como los cuadros de un GIF. */
+@keyframes bob {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(12px, -8px);
+  }
+  50% {
+    transform: translate(0, -12px);
+  }
+  75% {
+    transform: translate(-12px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.desktop {
+  min-height: 100dvh;
+  background: #008080;
+}
+
+.window {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 36rem);
+  background: #c0c0c0;
+  color: #000;
+  box-shadow:
+    inset -1px -1px #0a0a0a,
+    inset 1px 1px #fff,
+    inset -2px -2px grey,
+    inset 2px 2px #dfdfdf;
+}
+
+.titlebar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: 2px;
+  padding: 3px;
+  background: #000080;
+}
+
+.title-button {
+  display: grid;
+  width: 16px;
+  height: 14px;
+  place-items: center;
+  background: #c0c0c0;
+  box-shadow:
+    inset -1px -1px #0a0a0a,
+    inset 1px 1px #fff,
+    inset -2px -2px grey,
+    inset 2px 2px #dfdfdf;
+}
+
+.mark-min {
+  width: 6px;
+  height: 2px;
+  margin-top: 6px;
+  background: #000;
+}
+
+.mark-max {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #000;
+}
+
+.mark-close {
+  width: 8px;
+  height: 2px;
+  background: #000;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 0 #000;
+}
+
+.mark-close::after {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 2px;
+  background: #000;
+  transform: rotate(90deg);
+}
+
+.question {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.field {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  background: #fff;
+  color: #000;
+  font: inherit;
+  font-size: 16px;
+  box-shadow:
+    inset -1px -1px #fff,
+    inset 1px 1px grey,
+    inset -2px -2px #dfdfdf,
+    inset 2px 2px #0a0a0a;
+}
+
+.field:focus {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.ok {
+  padding: 6px 16px;
+  border: 0;
+  background: #c0c0c0;
+  color: #000;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow:
+    inset -1px -1px #0a0a0a,
+    inset 1px 1px #fff,
+    inset -2px -2px grey,
+    inset 2px 2px #dfdfdf;
+}
+
+.ok:active {
+  box-shadow:
+    inset -1px -1px #fff,
+    inset 1px 1px #0a0a0a,
+    inset -2px -2px #dfdfdf,
+    inset 2px 2px grey;
+}
+
+.ok:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: 2px;
+}
+
+.form-error {
+  margin: 0;
+  min-height: 1.25rem;
+  color: #000;
+  font-size: 14px;
+}
+
+.stage {
+  position: relative;
+  height: min(22rem, 46dvh);
+  min-height: 16rem;
+  overflow: hidden;
+  background: #49b8f8;
+  container-type: inline-size;
+  box-shadow:
+    inset -1px -1px #fff,
+    inset 1px 1px grey,
+    inset -2px -2px #dfdfdf,
+    inset 2px 2px #0a0a0a;
+}
+
+.cloud-float {
+  position: absolute;
+  inset: 8px;
+  animation: bob 1.8s steps(4, end) infinite;
+}
+
+.cloud-word {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  color: #fff;
+  font-size: calc(var(--size) * 1cqw);
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 #2c2158;
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-float {
+    animation: none;
+  }
+}
