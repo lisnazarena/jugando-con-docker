@@ -1,10 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { io } from 'socket.io-client'
 import WordCloud from './WordCloud.jsx'
 
 const QUESTION = 'Definí Docker en una sola palabra.'
+const API_URL = 'http://127.0.0.1:4000'
+const SERVER_DOWN = 'El servidor no responde. La API tiene que estar en marcha en el puerto 4000.'
 
-function sameWord(left, right) {
-  return left.toLocaleLowerCase('es') === right.toLocaleLowerCase('es')
+function timesLabel(count) {
+  return count === 1 ? 'vez' : 'veces'
+}
+
+function noticeFor(words) {
+  if (words.length === 0) return 'Todavía no hay palabras.'
+
+  const parts = words.map(
+    (word) => `${word.text}, ${word.count} ${timesLabel(word.count)}`,
+  )
+  return `Palabras en la nube: ${parts.join('. ')}.`
+}
+
+function noticeForChange(previous, next) {
+  const changed = next.find((word) => {
+    const before = previous.find((item) => item.id === word.id)
+    return !before || before.count !== word.count
+  })
+
+  if (!changed) return null
+  return `Se agregó ${changed.text}. Va ${changed.count} ${timesLabel(changed.count)}.`
 }
 
 export default function App() {
@@ -12,8 +34,47 @@ export default function App() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('Todavía no hay palabras.')
   const [words, setWords] = useState([])
+  const [serverDown, setServerDown] = useState(false)
+  const [sending, setSending] = useState(false)
+  const wordsRef = useRef([])
 
-  function onSubmit(event) {
+  useEffect(() => {
+    const socket = io(API_URL)
+    let open = true
+    let synced = false
+
+    socket.on('connect', () => {
+      if (open) setServerDown(false)
+    })
+
+    socket.on('connect_error', () => {
+      if (open) setServerDown(true)
+    })
+
+    socket.on('disconnect', () => {
+      if (open) setServerDown(true)
+    })
+
+    socket.on('words', (next) => {
+      if (!open || !Array.isArray(next)) return
+
+      const previous = wordsRef.current
+      wordsRef.current = next
+      setWords(next)
+      setServerDown(false)
+      setNotice(
+        synced ? noticeForChange(previous, next) ?? noticeFor(next) : noticeFor(next),
+      )
+      synced = true
+    })
+
+    return () => {
+      open = false
+      socket.close()
+    }
+  }, [])
+
+  async function onSubmit(event) {
     event.preventDefault()
 
     const text = draft.trim().replace(/\s+/g, ' ')
@@ -23,22 +84,39 @@ export default function App() {
       return
     }
 
-    const existing = words.find((word) => sameWord(word.text, text))
-    const count = (existing?.count ?? 0) + 1
+    setSending(true)
 
-    setError('')
-    setDraft('')
-    setWords(
-      existing
-        ? words.map((word) =>
-            sameWord(word.text, text) ? { ...word, text, count } : word,
-          )
-        : [...words, { id: crypto.randomUUID(), text, count }],
-    )
+    try {
+      const response = await fetch(`${API_URL}/api/words`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      const body = await response.json().catch(() => ({}))
 
-    const times = count === 1 ? 'vez' : 'veces'
-    setNotice(`Se agregó ${text}. Va ${count} ${times}.`)
+      if (!response.ok) {
+        setError(body.error || 'No se pudo guardar la palabra.')
+        return
+      }
+
+      setError('')
+      setDraft('')
+      setServerDown(false)
+
+      if (Array.isArray(body.words)) {
+        const previous = wordsRef.current
+        wordsRef.current = body.words
+        setWords(body.words)
+        setNotice(noticeForChange(previous, body.words) ?? noticeFor(body.words))
+      }
+    } catch {
+      setServerDown(true)
+    } finally {
+      setSending(false)
+    }
   }
+
+  const statusMessage = error || (serverDown ? SERVER_DOWN : '')
 
   return (
     <main className="desktop">
@@ -75,21 +153,21 @@ export default function App() {
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="una palabra"
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? 'error-palabra' : undefined}
+                aria-invalid={statusMessage ? true : undefined}
+                aria-describedby={statusMessage ? 'error-palabra' : undefined}
                 onChange={(event) => {
                   setDraft(event.target.value)
                   if (error) setError('')
                 }}
               />
 
-              <button className="ok" type="submit">
+              <button className="ok" type="submit" disabled={sending}>
                 Enviar
               </button>
             </form>
 
             <p id="error-palabra" className="form-error" role="status">
-              {error}
+              {statusMessage}
             </p>
 
             <p className="sr-only" aria-live="polite">

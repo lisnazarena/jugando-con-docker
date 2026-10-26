@@ -1,6 +1,10 @@
 # Dependencias de Node.js
 node_modules/
 
+# Lockfile vacío que crea npm si se corre en la raíz, donde no hay package.json.
+# Los de frontend/ y backend/ sí se versionan.
+/package-lock.json
+
 # Secretos. .env.example sí se versiona.
 .env
 .env.*
