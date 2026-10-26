@@ -46,7 +46,7 @@ input {
 .window {
   position: relative;
   width: min(100%, 1000px);
-  padding: 0 !important;
+  padding: 0;
   overflow: hidden;
   color: var(--text);
   background: rgba(10, 37, 33, 0.92);
@@ -93,23 +93,23 @@ input {
   display: none;
 }
 
-.window > .flex.flex-col {
+.panel {
   gap: 22px;
-  padding: 32px !important;
+  padding: 32px;
 }
 
 .question {
   margin: 0;
   color: #edfff8;
   font-size: clamp(25px, 4vw, 36px);
-  font-weight: 720;
+  font-weight: 700;
   letter-spacing: -1px;
   line-height: 1.25;
   text-align: center;
 }
 
-form {
-  gap: 10px !important;
+.word-form {
+  gap: 10px;
 }
 
 .field {
@@ -143,7 +143,7 @@ form {
   border-radius: 14px;
   box-shadow: 0 5px 22px rgba(74, 225, 174, 0.14);
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 700;
   cursor: pointer;
   transition:
     background 180ms ease,
@@ -200,52 +200,86 @@ form {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  transform-origin: center;
+  animation: float 8s ease-in-out infinite;
 }
 
-/* Las palabras permanecen por encima de la nube */
 .cloud-float {
   position: absolute;
   z-index: 1;
   inset: 8px;
-  animation: float 7s ease-in-out infinite;
+  animation: float 8s ease-in-out infinite;
 }
 
-.cloud-word {
+.cloud-anchor {
   position: absolute;
   left: var(--x);
   top: var(--y);
-  max-width: 95%;
-  overflow: hidden;
-  color: #baffdf;
-  font-size: calc(var(--size) * 1cqw);
-  font-weight: 650;
-  line-height: 1.1;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  text-shadow: 0 0 16px rgba(117, 240, 195, 0.2);
   transform: translate(-50%, -50%);
 }
 
-.cloud-word:nth-child(3n) {
-  color: #8ef5d3;
+.cloud-word {
+  display: inline-block;
+  max-width: 95%;
+  color: #baffdf;
+  font-size: calc(var(--size) * 1cqw);
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow: 0 0 16px rgba(117, 240, 195, 0.2);
+  animation: word-drift 6.5s ease-in-out infinite;
 }
 
-.cloud-word:nth-child(3n + 1) {
+.cloud-anchor:nth-child(even) .cloud-word {
+  animation-name: word-drift-alt;
+  animation-duration: 7.6s;
+  animation-delay: -2.2s;
+}
+
+.cloud-anchor:nth-child(3n) .cloud-word {
+  color: #8ef5d3;
+  animation-duration: 5.6s;
+  animation-delay: -1.3s;
+}
+
+.cloud-anchor:nth-child(3n + 1) .cloud-word {
   color: #8de8dc;
 }
 
-.cloud-word:nth-child(5n) {
+.cloud-anchor:nth-child(5n) .cloud-word {
   color: #effff8;
 }
 
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 
   50% {
-    transform: translateY(-5px);
+    transform: translate3d(10px, -14px, 0);
+  }
+}
+
+@keyframes word-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(6px, -8px, 0);
+  }
+}
+
+@keyframes word-drift-alt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(-6px, 7px, 0);
   }
 }
 
@@ -262,9 +296,9 @@ form {
     padding: 14px 16px;
   }
 
-  .window > .flex.flex-col {
+  .window > .panel {
     gap: 18px;
-    padding: 22px 14px !important;
+    padding: 22px 14px;
   }
 
   .question {
@@ -288,11 +322,13 @@ form {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
+  .cloud-background,
+  .cloud-float,
+  .cloud-word,
+  .field,
+  .ok {
+    animation: none;
+    transition: none;
   }
 }
 

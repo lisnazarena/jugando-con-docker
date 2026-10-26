@@ -129,9 +129,20 @@ Pregunta sugerida:
 
 > En la consigna, cuando un contenedor cae, ¿alcanza con que Docker lo reinicie automáticamente (hay unos segundos sin servicio y después vuelve el mismo contenedor), o hace falta una segunda instancia que siga atendiendo mientras la primera está detenida? El proyecto tiene exactamente tres contenedores: sitio web, API y PostgreSQL, con los datos en un volumen.
 
-## Estructura inicial de carpetas
+## Decisión del 26 de octubre — aspecto de la pantalla
 
-Todavía no está creada, salvo este archivo.
+La idea de una ventana de Windows 95, con tipografía en píxeles, queda reemplazada. La pantalla de la entrega es la actual, más moderna:
+
+- Escritorio verde oscuro y una ventana redondeada, en verde menta, sin título del proyecto.
+- La pregunta sigue fija en el código: «Definí Docker en una sola palabra.» El docente todavía no puede cambiarla desde la pantalla.
+- La nube la arman las palabras. Detrás hay una silueta suave, también verde menta.
+- Cada palabra distinta se dibuja una sola vez. Si se repite, esa misma se ve más grande que las demás.
+- La silueta y las palabras se mueven despacio. Quien tenga activada la opción de reducir movimiento las ve quietas.
+- Las palabras siguen solo en la pestaña del navegador. Este cambio no incluye servidor, base ni Docker.
+
+## Estructura de carpetas
+
+Prevista:
 
 ```text
 jugando-con-docker/
@@ -154,6 +165,8 @@ jugando-con-docker/
 └── db/
     └── init/
 ```
+
+Al 26 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React en `frontend/` y las carpetas `backend/` y `db/init/`. Faltan `docker-compose.yml`, los Dockerfile y el resto de los documentos.
 
 `db/init/` es para un SQL inicial, si hace falta. La imagen de PostgreSQL es la oficial: no hace falta un Dockerfile propio para la base.
 
@@ -234,20 +247,22 @@ Criterio de aceptación: `git status` está limpio, `git log` muestra el primer 
 
 ### Domingo 25 de octubre — Frontend
 
-Objetivo: una pantalla que muestre una pregunta, un formulario para enviar una palabra y la nube. Sin título de presentación. El aspecto es el de una ventana de Windows 95: fondo verde azulado, panel gris, bordes en relieve y tipografía en píxeles. Las palabras, al juntarse, arman la nube: no hay un dibujo con borde alrededor. Lo más repetido queda más grande y más al centro. La formación se mueve en bucle. Quien tenga activada la opción de reducir movimiento la ve quieta.
+Objetivo: una pantalla que muestre una pregunta, un formulario para enviar una palabra y la nube. Sin título de presentación. El aspecto que queda es el moderno descripto en la decisión del 26 de octubre. La primera idea, una ventana de Windows 95 en píxeles, se deja de lado.
 
 Tareas:
 
 - Crear el proyecto React con Vite dentro de `frontend/`.
-- Agregar Tailwind y una fuente píxel libre.
-- Maquetar la pregunta, el campo de texto, el botón y la nube, con controles de tamaño entero para que el píxel no se deforme.
+- Agregar Tailwind.
+- Maquetar la pregunta, el campo de texto, el botón y la nube, legible en el celular.
 - Abrirla en el navegador y probarla en un ancho de celular.
 
-Criterio de aceptación: la pantalla carga, el formulario no se envía a ningún servidor todavía y se entiende en una ventana angosta. Los estados de carga y error se preparan en serio el lunes, cuando exista el servidor.
+Criterio de aceptación: la pantalla carga con el estilo moderno, el formulario no se envía a ningún servidor todavía y se entiende en una ventana angosta. Cada palabra distinta aparece una sola vez. Los estados de carga y error de red se preparan cuando exista el servidor.
 
-### Lunes 26 de octubre — Backend y tiempo real
+### Lunes 26 de octubre — Aspecto moderno, y después el backend
 
-Objetivo: que dos navegadores vean la misma palabra apenas uno la envía.
+El estilo de la pantalla queda cerrado en la decisión de este día. La fuente en píxeles se quita del proyecto. El servidor sigue pendiente y no se empieza en este paso.
+
+Objetivo del backend, cuando se retome: que dos navegadores vean la misma palabra apenas uno la envía.
 
 Tareas:
 

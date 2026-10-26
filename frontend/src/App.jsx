@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 const QUESTION = 'Definí Docker en una sola palabra.'
 
@@ -8,49 +8,14 @@ function buildTokens(words) {
       right.count - left.count ||
       left.text.localeCompare(right.text, 'es'),
   )
+  const maxCount = ranked[0].count
 
-  const total = ranked.reduce((sum, word) => sum + word.count, 0)
-  const target =
-    ranked.length >= 12 ? ranked.length : Math.max(ranked.length, 18)
-
-  const quota = ranked.map((word) => ({
+  return ranked.map((word) => ({
+    id: word.id,
     text: word.text,
-    size: Math.round(15 + 16 * (word.count / ranked[0].count)),
-    left: Math.max(1, Math.round((word.count / total) * target)),
+    count: word.count,
+    size: Math.round(15 + 16 * (word.count / maxCount)),
   }))
-
-  let assigned = quota.reduce((sum, item) => sum + item.left, 0)
-  let cursor = 0
-
-  while (assigned < target) {
-    quota[cursor % quota.length].left += 1
-    assigned += 1
-    cursor += 1
-  }
-
-  while (assigned > target) {
-    const donor = quota.find((item) => item.left > 1)
-    if (!donor) break
-    donor.left -= 1
-    assigned -= 1
-  }
-
-  const tokens = []
-  let pending = true
-
-  while (pending) {
-    pending = false
-
-    for (const item of quota) {
-      if (item.left > 0) {
-        tokens.push({ text: item.text, size: item.size })
-        item.left -= 1
-        pending = true
-      }
-    }
-  }
-
-  return tokens
 }
 
 function makeCandidates() {
@@ -95,18 +60,16 @@ function makeCandidates() {
 
 const CANDIDATES = makeCandidates()
 
-function overlaps(current, other) {
+function overlaps(current, other, aspect) {
   return (
     Math.abs(current.x - other.x) <
       (current.w + other.w) / 2 + 10 &&
     Math.abs(current.y - other.y) <
-      (current.h + other.h) / 2 + 8
+      (current.h + other.h) / 2 + 8 * aspect
   )
 }
 
-function packTokens(tokens) {
-  if (tokens.length === 0) return []
-
+function orderFromCenter(tokens) {
   const ordered = [...tokens]
   let biggest = 0
 
@@ -115,64 +78,101 @@ function packTokens(tokens) {
   })
 
   const [center] = ordered.splice(biggest, 1)
+  return [center, ...ordered]
+}
+
+function tokenBox(token, shrink, aspect) {
+  const size = token.size * shrink
+
+  return {
+    size,
+    w: Math.max(size, token.text.length * size * 0.62),
+    h: size * 1.15 * aspect,
+  }
+}
+
+function layoutTokens(tokens, shrink, aspect) {
   const placed = []
 
-  for (const token of [center, ...ordered]) {
-    const width = Math.max(
-      token.size,
-      token.text.length * token.size * 0.62,
-    )
-    const height = token.size
-
+  for (const token of orderFromCenter(tokens)) {
+    const box = tokenBox(token, shrink, aspect)
     const spot = CANDIDATES.find((point) => {
-      const candidate = {
-        x: point.x,
-        y: point.y,
-        w: width,
-        h: height,
-      }
-
-      return !placed.some((other) => overlaps(candidate, other))
+      const candidate = { x: point.x, y: point.y, w: box.w, h: box.h }
+      return !placed.some((other) => overlaps(candidate, other, aspect))
     })
 
-    if (!spot) continue
+    if (!spot) return null
 
     placed.push({
       ...token,
+      ...box,
       x: spot.x,
       y: spot.y,
-      w: width,
-      h: height,
     })
   }
 
-  if (placed.length === 0) return []
+  return placed
+}
 
+function forceTokens(tokens, shrink, aspect) {
+  const sequence = orderFromCenter(tokens)
+  const stride = Math.max(
+    1,
+    Math.floor(CANDIDATES.length / sequence.length),
+  )
+
+  return sequence.map((token, index) => {
+    const box = tokenBox(token, shrink, aspect)
+    const spot = CANDIDATES[Math.min(index * stride, CANDIDATES.length - 1)]
+
+    return {
+      ...token,
+      ...box,
+      x: spot.x,
+      y: spot.y,
+    }
+  })
+}
+
+function toStage(placed) {
   const minX = Math.min(...placed.map((word) => word.x - word.w / 2))
   const maxX = Math.max(...placed.map((word) => word.x + word.w / 2))
   const minY = Math.min(...placed.map((word) => word.y - word.h / 2))
   const maxY = Math.max(...placed.map((word) => word.y + word.h / 2))
-
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
-
   const scale = Math.min(
     86 / (maxX - minX || 1),
     78 / (maxY - minY || 1),
   )
 
-  return placed.map((word, index) => ({
-    key: `${index}-${word.text}`,
+  return placed.map((word) => ({
+    id: word.id,
     text: word.text,
+    count: word.count,
     size: word.size * scale,
     x: 50 + (word.x - centerX) * scale,
     y: 50 + (word.y - centerY) * scale,
   }))
 }
 
-function placeInCloud(words) {
+function packTokens(tokens, aspect) {
+  if (tokens.length === 0) return []
+
+  let shrink = 1
+  let placed = null
+
+  for (let attempt = 0; attempt < 16 && !placed; attempt += 1) {
+    placed = layoutTokens(tokens, shrink, aspect)
+    shrink *= 0.82
+  }
+
+  return toStage(placed ?? forceTokens(tokens, shrink, aspect))
+}
+
+function placeInCloud(words, aspect) {
   if (words.length === 0) return []
-  return packTokens(buildTokens(words))
+  return packTokens(buildTokens(words), aspect)
 }
 
 function sameWord(left, right) {
@@ -266,7 +266,25 @@ export default function App() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('Todavía no hay palabras.')
   const [words, setWords] = useState([])
-  const countsRef = useRef({})
+  const stageRef = useRef(null)
+  const [aspect, setAspect] = useState(1.8)
+
+  useLayoutEffect(() => {
+    const node = stageRef.current
+    if (!node) return
+
+    const update = () => {
+      const next = node.clientWidth / Math.max(node.clientHeight, 1)
+      setAspect((current) =>
+        Math.abs(current - next) < 0.02 ? current : next,
+      )
+    }
+
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   function onSubmit(event) {
     event.preventDefault()
@@ -278,36 +296,32 @@ export default function App() {
       return
     }
 
-    const key = text.toLocaleLowerCase('es')
-    const count = (countsRef.current[key] ?? 0) + 1
-
-    countsRef.current[key] = count
+    const existing = words.find((word) => sameWord(word.text, text))
+    const count = (existing?.count ?? 0) + 1
 
     setError('')
     setDraft('')
-
-    setWords((current) => {
-      const exists = current.some((word) => sameWord(word.text, text))
-
-      if (!exists) {
-        return [...current, { id: crypto.randomUUID(), text, count }]
-      }
-
-      return current.map((word) =>
-        sameWord(word.text, text) ? { ...word, text, count } : word,
-      )
-    })
+    setWords(
+      existing
+        ? words.map((word) =>
+            sameWord(word.text, text) ? { ...word, text, count } : word,
+          )
+        : [...words, { id: crypto.randomUUID(), text, count }],
+    )
 
     const times = count === 1 ? 'vez' : 'veces'
     setNotice(`Se agregó ${text}. Va ${count} ${times}.`)
   }
 
-  const visibleWords = placeInCloud(words)
+  const visibleWords = useMemo(
+    () => placeInCloud(words, aspect),
+    [words, aspect],
+  )
 
   return (
     <main className="desktop">
-      <div className="flex min-h-dvh items-center justify-center p-4">
-        <section className="window p-3">
+      <div className="flex min-h-dvh items-center justify-center">
+        <section className="window">
           <div className="titlebar" aria-hidden="true">
             <span className="title-button">
               <span className="mark-min" />
@@ -320,11 +334,11 @@ export default function App() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-3 p-2">
+          <div className="panel flex flex-col">
             <p className="question">{QUESTION}</p>
 
             <form
-              className="flex flex-col gap-2 sm:flex-row"
+              className="word-form flex flex-col sm:flex-row"
               onSubmit={onSubmit}
             >
               <label className="sr-only" htmlFor="palabra">
@@ -360,21 +374,37 @@ export default function App() {
               {notice}
             </p>
 
-            <div className="stage">
+            <ul className="sr-only" aria-label="Palabras de la nube">
+              {visibleWords.map((word) => {
+                const times = word.count === 1 ? 'vez' : 'veces'
+
+                return (
+                  <li key={word.id}>
+                    {word.text}, {word.count} {times}
+                  </li>
+                )
+              })}
+            </ul>
+
+            <div className="stage" ref={stageRef}>
               <CloudBackground />
 
               <div className="cloud-float" aria-hidden="true">
                 {visibleWords.map((word) => (
                   <span
-                    key={word.key}
-                    className="cloud-word"
+                    key={word.id}
+                    className="cloud-anchor"
                     style={{
                       '--x': `${word.x}%`,
                       '--y': `${word.y}%`,
-                      '--size': word.size,
                     }}
                   >
-                    {word.text}
+                    <span
+                      className="cloud-word"
+                      style={{ '--size': word.size }}
+                    >
+                      {word.text}
+                    </span>
                   </span>
                 ))}
               </div>
