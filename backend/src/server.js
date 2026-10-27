@@ -2,7 +2,7 @@ import cors from 'cors'
 import express from 'express'
 import { createServer } from 'node:http'
 import { Server } from 'socket.io'
-import { addWord, listWords } from './words.js'
+import { addWord, listWords, pool } from './words.js'
 
 const port = Number(process.env.API_PORT) || 4000
 
@@ -17,29 +17,50 @@ const io = new Server(httpServer, {
   cors: { origin: origins },
 })
 
-function publish() {
-  io.emit('words', listWords())
-}
-
-app.get('/api/words', (_request, response) => {
-  response.json({ words: listWords() })
+app.get('/api/words', async (_request, response) => {
+  try {
+    response.json({ words: await listWords() })
+  } catch (error) {
+    console.error(error)
+    response.status(503).json({ error: 'La base no responde.' })
+  }
 })
 
-app.post('/api/words', (request, response) => {
-  const result = addWord(request.body?.text)
+app.post('/api/words', async (request, response) => {
+  try {
+    const result = await addWord(request.body?.text)
 
-  if (!result.ok) {
-    response.status(400).json({ error: result.error })
-    return
+    if (!result.ok) {
+      response.status(400).json({ error: result.error })
+      return
+    }
+
+    io.emit('words', result.words)
+    response.json({ words: result.words })
+  } catch (error) {
+    console.error(error)
+    response.status(503).json({ error: 'La base no responde.' })
   }
-
-  publish()
-  response.json({ words: result.words })
 })
 
 io.on('connection', (socket) => {
-  socket.emit('words', listWords())
+  listWords()
+    .then((words) => socket.emit('words', words))
+    .catch((error) => console.error(error))
 })
+
+if (!process.env.DATABASE_URL) {
+  console.error('Falta DATABASE_URL. Copiá .env.example a .env en la raíz del repositorio.')
+  process.exit(1)
+}
+
+try {
+  await pool.query('SELECT 1')
+} catch (error) {
+  console.error('No se pudo conectar con PostgreSQL.')
+  console.error(error.message)
+  process.exit(1)
+}
 
 httpServer.listen(port, '127.0.0.1', () => {
   console.log(`API en http://127.0.0.1:${port}`)

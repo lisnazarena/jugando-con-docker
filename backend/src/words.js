@@ -1,14 +1,16 @@
-const words = []
+import pg from 'pg'
 
-function sameWord(left, right) {
-  return left.toLocaleLowerCase('es') === right.toLocaleLowerCase('es')
+const QUESTION = 'Definí Docker en una sola palabra.'
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+})
+
+function normalize(text) {
+  return text.toLocaleLowerCase('es')
 }
 
-export function listWords() {
-  return words.map((word) => ({ ...word }))
-}
-
-export function addWord(raw) {
+function parseWord(raw) {
   if (typeof raw !== 'string') {
     return { ok: false, error: 'Escribí una palabra.' }
   }
@@ -23,18 +25,35 @@ export function addWord(raw) {
     return { ok: false, error: 'La palabra puede tener hasta 32 caracteres.' }
   }
 
-  const existing = words.find((word) => sameWord(word.text, text))
+  return { ok: true, text, normalized: normalize(text) }
+}
 
-  if (existing) {
-    existing.count += 1
-    existing.text = text
-  } else {
-    words.push({
-      id: crypto.randomUUID(),
-      text,
-      count: 1,
-    })
-  }
+function toWords(rows) {
+  return rows.map((row) => ({
+    id: row.id,
+    text: row.text,
+    count: Number(row.count),
+  }))
+}
 
-  return { ok: true, words: listWords() }
+export async function listWords() {
+  const result = await pool.query(
+    'SELECT id, text, count FROM words ORDER BY created_at, id',
+  )
+  return toWords(result.rows)
+}
+
+export async function addWord(raw) {
+  const parsed = parseWord(raw)
+  if (!parsed.ok) return parsed
+
+  await pool.query(
+    `INSERT INTO words (id, text, normalized, count, question)
+     VALUES ($1, $2, $3, 1, $4)
+     ON CONFLICT (normalized)
+     DO UPDATE SET text = EXCLUDED.text, count = words.count + 1`,
+    [crypto.randomUUID(), parsed.text, parsed.normalized, QUESTION],
+  )
+
+  return { ok: true, words: await listWords() }
 }

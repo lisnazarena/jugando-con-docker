@@ -2,9 +2,9 @@
 
 Este texto explica la carpeta `backend/` para alguien que ya leyó [el curso del frontend](CURSO_FRONTEND.md). Se puede leer de arriba hacia abajo. Cada lección usa solo lo que ya se explicó antes.
 
-Al terminar vas a poder señalar un archivo y decir qué hace, y vas a poder seguir una palabra desde el `curl` hasta el arreglo que la guarda.
+Al terminar vas a poder señalar un archivo y decir qué hace, y vas a poder seguir una palabra desde el `curl` hasta la fila que la guarda.
 
-La pantalla ya llama a esta API. Muestra una copia de la lista y, cuando alguien envía, hace un `POST`. La lista que manda vive en la memoria del proceso de Node. Si ese proceso se detiene, la lista desaparece y la pantalla lo avisa. La base de datos llega otro día.
+La pantalla ya llama a esta API. Muestra una copia de la lista y, cuando alguien envía, hace un `POST`. La lista que manda está en PostgreSQL. Si el proceso de Node se detiene y vuelve a arrancar, las palabras siguen. Si PostgreSQL está detenido, la API no puede leerlas y responde que la base no responde.
 
 Para leerlo con el código al lado, en una terminal:
 
@@ -27,7 +27,7 @@ Hoy hay dos programas distintos:
 | Programa | Dónde corre | Puerto | Qué recuerda |
 | --- | --- | --- | --- |
 | La pantalla, con Vite | En el navegador | 5173 | Una copia de la lista, para dibujarla |
-| Esta API | En Node | 4000 | El arreglo que manda |
+| Esta API | En Node | 4000 | Consulta las filas y avisa a las pestañas |
 
 Un puerto es un número que distingue un programa de otro en la misma computadora. El 5173 y el 4000 pueden estar abiertos al mismo tiempo. El 4000 se eligió porque el 3000 ya lo usa otro proyecto de esta máquina.
 
@@ -39,7 +39,7 @@ No hace falta saber todo Node. Este servidor usa cuatro ideas.
 
 ### Proceso
 
-Un proceso es un programa en ejecución. `npm run dev` crea el proceso de la API. El arreglo de palabras está dentro de ese proceso. No está en un archivo. Cuando el proceso termina, el arreglo se va con él.
+Un proceso es un programa en ejecución. `npm run dev` crea el proceso de la API. Ese proceso no guarda la lista: le pide las filas a PostgreSQL, que corre en otro proceso, dentro de un contenedor. Cuando el proceso de la API termina, las filas siguen en el volumen de Docker.
 
 ### Pedido y respuesta HTTP
 
@@ -71,19 +71,19 @@ Cuando corrés `curl -s http://127.0.0.1:4000/api/words` ocurre esto, en orden:
 1. `curl` abre una conexión con la máquina local, en el puerto 4000.
 2. Node, que está escuchando ahí, recibe el pedido `GET /api/words`.
 3. Express elige la función registrada para esa ruta.
-4. Esa función lee el arreglo y lo convierte en JSON.
+4. Esa función lee las filas y las convierte en JSON.
 5. `curl` imprime esa respuesta en la terminal.
 
 ```text
 curl
     └── HTTP, puerto 4000
             └── server.js          Express elige la ruta
-                    └── words.js   el arreglo en memoria
+                    └── words.js   lee y escribe la tabla words
 ```
 
 `127.0.0.1` significa esta misma computadora. El servidor está atado a esa dirección: otro equipo de la red no llega a este puerto.
 
-Un `POST` hace el mismo camino y, además, modifica el arreglo antes de responder.
+Un `POST` hace el mismo camino y, además, escribe en la tabla antes de responder.
 
 ## Lección 4. Mapa de la carpeta
 
@@ -93,7 +93,7 @@ backend/
 ├── package-lock.json    versiones exactas instaladas
 └── src/
     ├── server.js        HTTP, Express y Socket.IO
-    └── words.js         arreglo de palabras y reglas para agregar
+    └── words.js         reglas de la palabra y consultas a PostgreSQL
 ```
 
 `node_modules/` aparece después de `npm install`. Ahí están Express, Socket.IO, CORS y las librerías que ellas piden. No se edita y no se sube a Git. El `.gitignore` de la raíz del repositorio ya ignora cualquier `node_modules/`.
@@ -122,7 +122,7 @@ El archivo que fija las versiones de esta API es `backend/package-lock.json`. Un
 | `dev` | Arranca el servidor y lo vuelve a arrancar al guardar un archivo |
 | `start` | Arranca el servidor una sola vez |
 
-`node --watch` mira `server.js` y los archivos que ese archivo importa. Si guardás `words.js`, Node mata el proceso y lo crea de nuevo. El arreglo empieza otra vez en vacío. Es el mismo efecto que apretar Ctrl+C y volver a correr el comando.
+`node --watch` mira `server.js` y los archivos que ese archivo importa. Si guardás `words.js`, Node mata el proceso y lo crea de nuevo. Las filas no se borran: el proceso nuevo vuelve a leerlas de PostgreSQL. Ctrl+C y volver a correr el comando tiene el mismo efecto.
 
 En `dependencies` hay tres librerías:
 
@@ -190,72 +190,70 @@ httpServer.listen(port, '127.0.0.1', () => {
 
 El segundo argumento, `'127.0.0.1'`, limita la escucha a esta máquina.
 
-## Lección 7. `words.js`, la memoria
+## Lección 7. `words.js` y la tabla
 
-Todo el archivo trabaja sobre un solo arreglo:
+La tabla se crea con `db/init/001_words.sql` la primera vez que el contenedor arranca con el volumen vacío. PostgreSQL oficial ejecuta los `.sql` de esa carpeta solo en ese momento.
+
+| Columna | Qué guarda |
+| --- | --- |
+| `id` | Identificador de esa palabra. No cambia cuando se repite |
+| `text` | El texto visible, con las mayúsculas del último envío |
+| `normalized` | El mismo texto en minúsculas, para reconocer repeticiones |
+| `count` | Cuántas veces se aceptó |
+| `question` | La pregunta de la actividad, fija en el código |
+| `created_at` | Cuándo se agregó por primera vez. Ordena la lista |
+
+`normalized` tiene una restricción `UNIQUE`: PostgreSQL no deja dos filas con la misma palabra.
+
+La pantalla sigue recibiendo solo `id`, `text` y `count`. La pregunta y la fecha quedan en la base para consultarlas con `psql`.
+
+### Leer
 
 ```js
-const words = []
-```
-
-Esa variable no se exporta. Desde `server.js` solo se puede usar `listWords` y `addWord`. El arreglo queda escondido en este archivo.
-
-Cada elemento tiene la misma forma que en la pantalla:
-
-```js
-{ id: "un-id-único", text: "volumen", count: 1 }
-```
-
-`id` identifica esa entrada. `text` es lo que se escribió. `count` es cuántas veces se aceptó.
-
-### Leer una copia
-
-```js
-export function listWords() {
-  return words.map((word) => ({ ...word }))
+export async function listWords() {
+  const result = await pool.query(
+    'SELECT id, text, count FROM words ORDER BY created_at, id',
+  )
+  return toWords(result.rows)
 }
 ```
 
-`map` recorre el arreglo y arma otro. `{ ...word }` copia las tres propiedades en un objeto nuevo. Quien recibe la lista puede modificar su copia sin tocar el arreglo interno.
+`pool` es la conexión con PostgreSQL. `query` manda el SQL y espera las filas. `toWords` arma los objetos que ya conoce la pantalla y convierte `count` en número.
 
 ### La misma palabra, sin mirar mayúsculas
 
 ```js
-function sameWord(left, right) {
-  return left.toLocaleLowerCase('es') === right.toLocaleLowerCase('es')
+function normalize(text) {
+  return text.toLocaleLowerCase('es')
 }
 ```
 
-`volumen` y `Volumen` cuentan como la misma. `'es'` pide las reglas de minúsculas del español. La pantalla tiene esta misma función en `App.jsx`. Hoy las dos listas están separadas, así que cada una aplica la regla en su propia memoria.
+`volumen` y `Volumen` quedan en la misma clave. `'es'` pide las reglas de minúsculas del español. Esa clave se guarda en `normalized`.
 
 ### Agregar
 
-`addWord` recibe el texto crudo y devuelve un resultado. Hay dos formas:
+`addWord` recibe el texto crudo. Si no es un string, queda vacío o pasa de 32 caracteres, devuelve `{ ok: false, error }` y no toca la base. El campo de la pantalla ya limita a 32 caracteres. El servidor repite el límite porque un `curl` puede saltarse el campo.
 
-```js
-{ ok: false, error: 'Escribí una palabra.' }
-{ ok: true, words: [ /* la lista completa */ ] }
+Si el texto sirve, una sola sentencia inserta o actualiza:
+
+```sql
+INSERT INTO words (id, text, normalized, count, question)
+VALUES ($1, $2, $3, 1, $4)
+ON CONFLICT (normalized)
+DO UPDATE SET text = EXCLUDED.text, count = words.count + 1
 ```
 
-Los pasos, en orden:
+`$1`, `$2`, `$3` y `$4` son los valores que manda Node. PostgreSQL los trata como datos, no como parte del SQL. Si `normalized` ya existe, no crea otra fila: deja el `id`, pone el texto nuevo y suma 1 a `count`. El último envío define las mayúsculas que quedan guardadas.
 
-1. Si el valor no es un string, rechaza. Un pedido sin `text`, o con un número, cae acá.
-2. Limpia el texto. `trim()` saca espacios de las puntas. `replace(/\s+/g, ' ')` convierte una racha de espacios en un solo espacio. `  volumen   ` queda en `volumen`.
-3. Si después de limpiar no queda nada, rechaza con «Escribí una palabra.»
-4. Si el texto mide más de 32 caracteres, rechaza con «La palabra puede tener hasta 32 caracteres.» El campo de la pantalla ya tiene `maxLength={32}`. El servidor repite el límite porque un `curl` puede saltarse el campo.
-5. Busca una entrada existente con `sameWord`.
-6. Si la encuentra, suma 1 a `count` y reemplaza `text` por el envío nuevo. El último envío define las mayúsculas que quedan guardadas. El `id` no cambia.
-7. Si no la encuentra, agrega `{ id, text, count: 1 }`. `crypto.randomUUID()` genera el `id`. Node lo trae incorporado.
-
-`find` devuelve el objeto que está dentro del arreglo, no una copia. Por eso `existing.count += 1` modifica la memoria de verdad. `listWords`, en cambio, entrega copias.
+Después `addWord` vuelve a leer la tabla y devuelve `{ ok: true, words }`.
 
 ## Lección 8. Las dos rutas
 
 ### `GET /api/words`
 
 ```js
-app.get('/api/words', (_request, response) => {
-  response.json({ words: listWords() })
+app.get('/api/words', async (_request, response) => {
+  response.json({ words: await listWords() })
 })
 ```
 
@@ -270,24 +268,22 @@ Con la lista vacía, el cuerpo es:
 ### `POST /api/words`
 
 ```js
-app.post('/api/words', (request, response) => {
-  const result = addWord(request.body?.text)
+const result = await addWord(request.body?.text)
 
-  if (!result.ok) {
-    response.status(400).json({ error: result.error })
-    return
-  }
+if (!result.ok) {
+  response.status(400).json({ error: result.error })
+  return
+}
 
-  publish()
-  response.json({ words: result.words })
-})
+io.emit('words', result.words)
+response.json({ words: result.words })
 ```
 
 `request.body?.text` lee `text` solo si `body` existe. Si el cuerpo no es JSON, `body` puede faltar y la expresión vale `undefined`. `addWord` lo rechaza.
 
-Si `ok` es falso, la respuesta es 400 y el cuerpo es `{ "error": "..." }`. El `return` evita seguir. En ese caso no se llama a `publish`: un pedido rechazado no avisa a nadie, porque la lista no cambió.
+Si `ok` es falso, la respuesta es 400 y el cuerpo es `{ "error": "..." }`. El `return` evita seguir. En ese caso no hay aviso por Socket.IO, porque la lista no cambió.
 
-Si `ok` es verdadero, primero avisa por Socket.IO y después responde 200 con la lista completa, no solo con la palabra nueva.
+Si `ok` es verdadero, primero avisa por Socket.IO y después responde 200 con la lista completa, no solo con la palabra nueva. Si PostgreSQL no contesta, la respuesta es 503 y el texto es «La base no responde.»
 
 El pedido que ya corriste fue este:
 
@@ -314,12 +310,12 @@ const io = new Server(httpServer, {
   cors: { origin: origins },
 })
 
-function publish() {
-  io.emit('words', listWords())
-}
+io.emit('words', result.words)
 
 io.on('connection', (socket) => {
-  socket.emit('words', listWords())
+  listWords()
+    .then((words) => socket.emit('words', words))
+    .catch((error) => console.error(error))
 })
 ```
 
@@ -332,7 +328,7 @@ io.on('connection', (socket) => {
 
 El nombre del aviso es `words`. El dato es la lista completa. Quien se conecta tarde recibe lo que ya estaba guardado, sin esperar a que alguien envíe otra palabra.
 
-`publish` se llama únicamente desde el `POST` exitoso. El `GET` no emite nada: mirar la lista no es un cambio.
+`io.emit` se llama únicamente desde el `POST` exitoso. El `GET` no emite nada: mirar la lista no es un cambio.
 
 CORS se configura otra vez acá porque la conexión de Socket.IO también la abre el navegador, y también cruza del puerto 5173 al 4000.
 
@@ -340,31 +336,25 @@ CORS se configura otra vez acá porque la conexión de Socket.IO también la abr
 
 El servidor está recién iniciado. Alguien manda `volumen` y después `Volumen`.
 
-1. El arreglo `words` es `[]`.
+1. La tabla `words` no tiene filas.
 2. `GET /api/words` responde `{ "words": [] }`.
 3. Llega `POST` con `{ "text": "volumen" }`. `addWord` limpia el texto, no encuentra una igual y agrega una entrada nueva. `count` queda en 1. Se genera un `id`.
 4. `publish` emite `words` con esa lista de un elemento. Si nadie está conectado, el aviso no tiene destinatarios y el `POST` igual responde.
 5. La respuesta HTTP es 200 y trae la misma lista.
-6. Llega `POST` con `{ "text": "Volumen" }`. `sameWord` encuentra la entrada anterior. `count` pasa a 2. `text` pasa a `Volumen`. El `id` sigue igual.
+6. Llega `POST` con `{ "text": "Volumen" }`. `normalized` coincide con la fila anterior. `count` pasa a 2. `text` pasa a `Volumen`. El `id` sigue igual.
 7. `publish` emite la lista actualizada. La respuesta HTTP también la trae.
 
-Un tercer pedido con `{ "text": "   " }` no entra al arreglo. La respuesta es 400 y el texto del error es «Escribí una palabra.» Los clientes conectados no reciben un aviso nuevo.
+Un tercer pedido con `{ "text": "   " }` no crea ni modifica una fila. La respuesta es 400 y el texto del error es «Escribí una palabra.» Los clientes conectados no reciben un aviso nuevo.
 
-## Lección 11. Qué se pierde al detener el proceso
+## Lección 11. Qué sobrevive al detener la API
 
-La lista está en la variable `words` del proceso que imprimió `API en http://127.0.0.1:4000`.
+Las filas están en el volumen Docker `jugando-palabras-pgdata`, montado en los datos de PostgreSQL. Ese directorio no está en el repositorio.
 
-Se vacía en cualquiera de estos casos:
+Detener la API no las borra. Ctrl+C, guardar un archivo con `npm run dev`, o cerrar la terminal, crean otro proceso de Node. Al volver a pedir `GET /api/words`, la palabra sigue, con el mismo `id` y el mismo `count`.
 
-- Ctrl+C en esa terminal y volver a ejecutar `npm run dev`.
-- Guardar `server.js` o `words.js` mientras corre `npm run dev`, porque `--watch` crea un proceso nuevo.
-- Cerrar la terminal donde corre el servidor.
+Lo que sí las borra es borrar el volumen, con `docker volume rm` o un `docker compose down -v` el día que exista Compose. Esos comandos no se usan sin decir antes qué van a borrar.
 
-Para verlo: enviá una palabra, detenés el proceso, lo volvés a levantar y hacés `GET /api/words`. La respuesta es `{ "words": [] }`. La palabra anterior no está en un archivo que se pueda volver a abrir.
-
-Ese límite es intencional. Muestra que la memoria del proceso no sobrevive al proceso. El día de la base de datos, la misma prueba tiene que encontrar la palabra después del reinicio.
-
-Al abrir de nuevo la pantalla, con la API en marcha, el evento `words` vuelve a traer la lista. Si la API está detenida, la pantalla muestra que el servidor no responde y no puede incorporar palabras nuevas.
+Si la API está detenida, la pantalla muestra que el servidor no responde. Cuando vuelve, el evento `words` trae las filas que PostgreSQL conservó. Si el contenedor de la base está detenido, la API arranca y se detiene enseguida con «No se pudo conectar con PostgreSQL.»
 
 ## Lección 12. Cómo se entera la pantalla
 
@@ -376,7 +366,7 @@ Al apretar Enviar, después de rechazar el texto vacío, hace `POST /api/words` 
 
 Si `fetch` no logra hablar con el puerto 4000, o el socket se corta, el párrafo rojo dice: «El servidor no responde. La API tiene que estar en marcha en el puerto 4000.» «Escribí una palabra.» sigue siendo el mensaje del campo vacío. Son dos textos distintos.
 
-Siguen afuera de este paso: PostgreSQL, Docker, el Dockerfile y Compose.
+PostgreSQL ya corre en un contenedor suelto, publicado solo en `127.0.0.1:5435`. La API sigue en Ubuntu, no en un contenedor. Faltan el Dockerfile, la imagen y Compose. El jueves la API va a usar el nombre `db` dentro de la red de Docker, en lugar de `127.0.0.1`.
 
 ## Lección 13. Glosario
 
@@ -398,13 +388,13 @@ Siguen afuera de este paso: PostgreSQL, Docker, el Dockerfile y Compose.
 
 Respondé sin mirar el código y después confirmá en el archivo. Para las dos últimas, usá la API en marcha.
 
-1. ¿En qué archivo está el arreglo y en cuál están las rutas?
-2. ¿Qué devuelve `GET /api/words` cuando nadie envió nada desde el último arranque?
+1. ¿Dónde están las filas y en qué archivo están las rutas?
+2. ¿Qué devuelve `GET /api/words` cuando la tabla no tiene filas?
 3. ¿Qué tienen en común `volumen` y `Volumen` después de dos `POST`, y qué cambia en el texto guardado?
 4. ¿Qué estado HTTP y qué cuerpo vuelve si el texto, ya limpio, queda vacío?
-5. ¿En qué momento se llama a `publish`?
-6. ¿Por qué `listWords` copia cada objeto en vez de devolver el arreglo interno?
-7. Si guardás `words.js` con `npm run dev` corriendo, ¿siguen las palabras? ¿Por qué?
+5. ¿En qué momento se avisa por Socket.IO?
+6. ¿Qué devuelve `listWords` a la pantalla?
+7. Si guardás `words.js` con `npm run dev` corriendo, ¿siguen las palabras? ¿Dónde están?
 8. ¿La nube de http://127.0.0.1:5173 muestra la palabra que mandaste con `curl`?
 
-Respuestas: 1, el arreglo está en `words.js` y las rutas en `server.js`. 2, `{ "words": [] }`. 3, comparten `id` y el contador queda en 2; el texto guardado pasa a ser el del último envío, `Volumen`. 4, 400 y `{ "error": "Escribí una palabra." }`. 5, después de un `POST` que `addWord` aceptó, y también, solo hacia el cliente nuevo, cuando alguien se conecta por Socket.IO. 6, para que la respuesta no sea el mismo arreglo que el servidor va a seguir modificando. 7, no siguen: `--watch` crea un proceso nuevo y el arreglo nace vacío. 8, sí, si la pantalla está abierta o se abre después: el evento `words` le entrega la lista del proceso.
+Respuestas: 1, las filas están en PostgreSQL y las consultas en `words.js`. Las rutas están en `server.js`. 2, `{ "words": [] }`. 3, comparten `id` y el contador queda en 2; el texto guardado pasa a ser el del último envío, `Volumen`. 4, 400 y `{ "error": "Escribí una palabra." }`. 5, después de un `POST` que `addWord` aceptó, y también, solo hacia el cliente nuevo, cuando alguien se conecta por Socket.IO. 6, `listWords` arma objetos nuevos a partir de las filas, para la respuesta HTTP. 7, sí siguen: `--watch` crea un proceso nuevo y ese proceso lee la tabla. Las filas están en el volumen de PostgreSQL. 8, sí, si la pantalla está abierta o se abre después y la API puede leer la base: el evento `words` le entrega esas filas.
