@@ -6,7 +6,7 @@ El trabajo está en construcción. La fecha de entrega es el 3 de noviembre de 2
 
 ## Estado
 
-La pantalla ya se puede abrir en el navegador y envía las palabras a la API del puerto 4000. Esa API las guarda en la memoria del proceso: si se detiene, la lista se pierde y la pantalla avisa que el servidor no responde. Todavía no hay contenedores.
+La pantalla ya se puede abrir en el navegador y envía las palabras a la API del puerto 4000. La API las guarda en PostgreSQL 16. Si se detiene el proceso de Node y vuelve a arrancar, las palabras siguen. El contenedor de la base es `jugando-palabras-db`, publicado solo en `127.0.0.1:5435`. La pantalla y la API todavía no están en contenedores.
 
 ## Camino elegido
 
@@ -42,7 +42,13 @@ Abrí http://127.0.0.1:5173
 
 Cómo está armada esa pantalla, archivo por archivo: [docs/CURSO_FRONTEND.md](docs/CURSO_FRONTEND.md).
 
-## Ver la API
+## Ver la base y la API
+
+PostgreSQL corre en un contenedor, con los datos en el volumen `jugando-palabras-pgdata`. Hace falta copiar `.env.example` a `.env` en la raíz. Ese archivo no se sube.
+
+```bash
+docker start jugando-palabras-db
+```
 
 En otra terminal, con Node.js:
 

@@ -770,10 +770,10 @@ Respondé sin mirar el código y después confirmá en el archivo.
 7. ¿Qué función evita que el formulario recargue la página?
 8. Si cerrás la pestaña y la volvés a abrir, ¿siguen las palabras? ¿Por qué?
 
-Respuestas: 1, `main.jsx`. 2, la copia que se dibuja está en `App`, dentro de `words`. La lista que manda está en la API. `WordCloud` solo la muestra. 3, cuentan como la misma y comparten contador; esa decisión la toma `words.js` en el backend. 4, porque un `POST` aceptado llama a `setDraft('')`. 5, sube `count` en la API; el tamaño sale de comparar ese `count` con el máximo de la lista. 6, la lista le lee el contenido a quien usa un lector de pantalla, y la nube es la versión visual de los mismos datos. 7, `event.preventDefault()`. 8, siguen mientras la API siga en marcha: al abrir la pestaña, el evento `words` trae la lista del proceso. Si ese proceso se detuvo, la lista se perdió y la pantalla avisa que el servidor no responde.
+Respuestas: 1, `main.jsx`. 2, la copia que se dibuja está en `App`, dentro de `words`. La lista que manda está en la API. `WordCloud` solo la muestra. 3, cuentan como la misma y comparten contador; esa decisión la toma `words.js` en el backend. 4, porque un `POST` aceptado llama a `setDraft('')`. 5, sube `count` en la API; el tamaño sale de comparar ese `count` con el máximo de la lista. 6, la lista le lee el contenido a quien usa un lector de pantalla, y la nube es la versión visual de los mismos datos. 7, `event.preventDefault()`. 8, siguen, aunque la pestaña se haya cerrado: al abrirla de nuevo la API lee las filas de PostgreSQL y el evento `words` las trae. Si la API está detenida, la pantalla avisa que el servidor no responde.
 
 ## Qué mirar cuando esto cambie
 
 La pantalla ya envía y escucha. El curso de esa API está en [CURSO_BACKEND.md](CURSO_BACKEND.md). `WordCloud`, `placeInCloud` y `CloudBackground` siguen recibiendo una lista terminada: no les importa si salió de esta pestaña o de otra.
 
-Lo que todavía falta es que esa lista sobreviva cuando el proceso de la API se detiene. Eso es la base de datos.
+La lista sobrevive al reinicio de la API porque está en PostgreSQL. Lo que todavía falta es meter la pantalla y la API en imágenes de Docker, y después levantar las tres juntas con Compose.

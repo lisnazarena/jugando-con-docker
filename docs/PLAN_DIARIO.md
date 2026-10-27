@@ -168,7 +168,7 @@ jugando-con-docker/
     └── init/
 ```
 
-Al 26 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React en `frontend/`, la API en memoria dentro de `backend/`, el formulario conectado a esa API, los cursos `docs/CURSO_FRONTEND.md` y `docs/CURSO_BACKEND.md`, y la carpeta `db/init/`. Faltan `docker-compose.yml`, los Dockerfile y el resto de los documentos.
+Al 27 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React en `frontend/`, la API en `backend/` guardando en PostgreSQL, el formulario conectado a esa API, los cursos `docs/CURSO_FRONTEND.md` y `docs/CURSO_BACKEND.md`, y `db/init/001_words.sql`. La base corre en un contenedor suelto. Faltan `docker-compose.yml`, los Dockerfile y el resto de los documentos.
 
 `db/init/` es para un SQL inicial, si hace falta. La imagen de PostgreSQL es la oficial: no hace falta un Dockerfile propio para la base.
 
