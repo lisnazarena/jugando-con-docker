@@ -60,6 +60,16 @@ npm run dev
 
 La API queda en http://127.0.0.1:4000. Cómo está armado ese servidor, archivo por archivo: [docs/CURSO_BACKEND.md](docs/CURSO_BACKEND.md).
 
+## Ver las palabras guardadas
+
+La pantalla y la API no están en Docker. La tabla sí, dentro de `jugando-palabras-db`. Con ese contenedor encendido:
+
+```bash
+docker exec jugando-palabras-db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
+```
+
+Cada fila es una palabra distinta. `count` es cuántas veces se envió. Si la consulta no devuelve filas, la nube todavía no recibió ninguna. La explicación de las columnas y de cómo entrar a `psql` está en la lección 12 de [docs/CURSO_BACKEND.md](docs/CURSO_BACKEND.md).
+
 Más adelante, con Docker, el comando previsto es:
 
 ```bash
