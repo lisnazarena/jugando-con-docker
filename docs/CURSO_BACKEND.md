@@ -356,7 +356,73 @@ Lo que sí las borra es borrar el volumen, con `docker volume rm` o un `docker c
 
 Si la API está detenida, la pantalla muestra que el servidor no responde. Cuando vuelve, el evento `words` trae las filas que PostgreSQL conservó. Si el contenedor de la base está detenido, la API arranca y se detiene enseguida con «No se pudo conectar con PostgreSQL.»
 
-## Lección 12. Cómo se entera la pantalla
+## Lección 12. Qué está en Docker y cómo ver la tabla
+
+Hoy este proyecto tiene un solo contenedor encendido. La pantalla y la API siguen siendo programas de Ubuntu.
+
+| Parte | Dónde corre | Cómo se enciende |
+| --- | --- | --- |
+| Pantalla | Ubuntu, puerto 5173 | `cd frontend && npm run dev` |
+| API | Ubuntu, puerto 4000 | `cd backend && npm run dev` |
+| PostgreSQL 16 | Contenedor `jugando-palabras-db` | `docker start jugando-palabras-db` |
+
+El contenedor publica la base solo en `127.0.0.1:5435`. Otra computadora de la red no llega a ese puerto. Los datos están en el volumen `jugando-palabras-pgdata`.
+
+Para ver qué contenedores de este proyecto existen:
+
+```bash
+docker ps -a --filter name=jugando
+```
+
+`Up` significa encendido. `Exited` significa apagado. Pueden aparecer cuatro contenedores viejos, apagados: `jugando-frontend`, `jugando-backend`, `jugando-db` y `jugando-postgres`. No son la forma actual de correr la aplicación. No hace falta encenderlos.
+
+### Entrar a la tabla
+
+Con el contenedor encendido, este comando muestra las palabras:
+
+```bash
+docker exec jugando-palabras-db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
+```
+
+`docker exec` corre un programa dentro del contenedor. `psql` es el cliente de PostgreSQL. `-d lluvia` elige la base. `-c` ejecuta una consulta y vuelve a la terminal.
+
+Cada fila es una palabra distinta. Las columnas se leen así:
+
+| Columna | Qué estás viendo |
+| --- | --- |
+| `text` | La palabra, con las mayúsculas del último envío |
+| `count` | Cuántas veces se envió |
+| `question` | La pregunta de la actividad |
+| `created_at` | Cuándo apareció por primera vez |
+
+Si todavía nadie envió nada, la consulta devuelve cero filas. La tabla igual existe.
+
+Para mirarla con calma, sin el `-c`:
+
+```bash
+docker exec -it jugando-palabras-db psql -U lluvia -d lluvia
+```
+
+`-it` deja la terminal dentro de `psql`. Ahí sirven estos comandos:
+
+| Comando | Qué muestra |
+| --- | --- |
+| `\dt` | Las tablas de la base. Tiene que aparecer `words` |
+| `\d words` | Las columnas, la clave y la regla de que `count` sea mayor que cero |
+| `SELECT text, count FROM words ORDER BY created_at;` | Las palabras y sus cantidades |
+| `\q` | Salir y volver a la terminal de Ubuntu |
+
+El punto y coma del `SELECT` es obligatorio. Sin eso, `psql` espera que sigas escribiendo la consulta.
+
+Desde Ubuntu, si el programa `psql` está instalado, la misma consulta entra por el puerto publicado:
+
+```bash
+psql "postgresql://lluvia:cambiar-esta-clave@127.0.0.1:5435/lluvia" -c 'SELECT text, count, question FROM words ORDER BY created_at;'
+```
+
+La contraseña de ese ejemplo es la de `.env.example`. El archivo `.env` real no se escribe en la documentación ni se sube al repositorio.
+
+## Lección 13. Cómo se entera la pantalla
 
 `frontend/src/App.jsx` hace dos cosas con `http://127.0.0.1:4000`.
 
@@ -368,11 +434,11 @@ Si `fetch` no logra hablar con el puerto 4000, o el socket se corta, el párrafo
 
 PostgreSQL ya corre en un contenedor suelto, publicado solo en `127.0.0.1:5435`. La API sigue en Ubuntu, no en un contenedor. Faltan el Dockerfile, la imagen y Compose. El jueves la API va a usar el nombre `db` dentro de la red de Docker, en lugar de `127.0.0.1`.
 
-## Lección 13. Glosario
+## Lección 14. Glosario
 
 | Palabra | Significado en este proyecto |
 | --- | --- |
-| Proceso | El programa de Node mientras está en ejecución. La lista vive ahí |
+| Proceso | El programa de Node mientras está en ejecución. Las palabras no viven ahí: están en PostgreSQL |
 | Puerto | Número que separa programas en la misma máquina. La API usa el 4000 |
 | HTTP | Un pedido y una respuesta. `GET` lee, `POST` incorpora |
 | Ruta | El camino del pedido. Acá son `GET /api/words` y `POST /api/words` |
@@ -383,8 +449,11 @@ PostgreSQL ya corre en un contenedor suelto, publicado solo en `127.0.0.1:5435`.
 | Socket.IO | La conexión que permanece abierta para avisar la lista nueva |
 | Evento `words` | El aviso con la lista completa |
 | `curl` | El comando de la terminal que hace un pedido HTTP |
+| Contenedor | Un proceso aislado creado a partir de una imagen. Hoy solo la base corre así |
+| Volumen | El lugar donde PostgreSQL guarda los archivos de la base. Sobrevive al contenedor |
+| `psql` | El programa para ver y consultar las tablas |
 
-## Lección 14. Comprobar que se entendió
+## Lección 15. Comprobar que se entendió
 
 Respondé sin mirar el código y después confirmá en el archivo. Para las dos últimas, usá la API en marcha.
 
