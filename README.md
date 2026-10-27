@@ -46,6 +46,8 @@ Cómo está armada esa pantalla, archivo por archivo: [docs/CURSO_FRONTEND.md](d
 
 PostgreSQL corre en un contenedor, con los datos en el volumen `jugando-palabras-pgdata`. Hace falta copiar `.env.example` a `.env` en la raíz. Ese archivo no se sube.
 
+En una computadora donde el proyecto todavía no está, los pasos completos están en [docs/LEVANTAR.md](docs/LEVANTAR.md). Ahí se crea el contenedor. En esta máquina ya existe, y alcanza con encenderlo:
+
 ```bash
 docker start jugando-palabras-db
 ```
