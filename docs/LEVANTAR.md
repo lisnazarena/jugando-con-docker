@@ -1,114 +1,72 @@
 # Levantar el proyecto desde cero
 
-Estos pasos sirven en una computadora donde el proyecto todavía no está. En esta máquina el contenedor de la base ya existe. En la de la universidad hay que crearlo.
+Estos pasos sirven en una computadora donde el proyecto todavía no está. Hace falta Git, Docker y que GitHub reconozca la cuenta: el repositorio es privado.
 
-La pantalla y la API no van en Docker. Solo PostgreSQL corre en un contenedor. Las imágenes y `docker compose up` llegan más adelante. Hoy no alcanzan para abrir el proyecto.
+La pantalla, la API y PostgreSQL quedan en tres contenedores. El comando que los crea es `docker compose up --build`.
 
-## Qué tiene que estar instalado
-
-- Git
-- Docker
-- Node.js 20 o más nuevo
-
-El repositorio es privado. GitHub tiene que reconocer la cuenta antes del `git clone`. Si `node -v` muestra una versión menor que 20, `npm run dev` de la API no va a poder leer el archivo `.env`.
-
-Los puertos 5173, 4000 y 5435 tienen que estar libres.
-
-## 1. Clonar y elegir la rama
+## 1. Clonar
 
 ```bash
 git clone https://github.com/lisnazarena/jugando-con-docker.git
 cd jugando-con-docker
-git checkout feature/persistencia
 ```
 
-`feature/persistencia` es la rama que guarda las palabras en PostgreSQL. Cuando ese trabajo esté en `main`, el `git checkout` deja de hacer falta: `git clone` ya deja la rama correcta.
+`main` ya incluye la base y Compose. Si esa rama no los tiene, el trabajo está en otra: `git checkout` de la rama que los haya mergeado.
 
 ## 2. Crear el archivo de conexión
 
-`.env` no viene en Git. Se copia del ejemplo y, para esta etapa, se deja como está.
+`.env` no viene en Git.
 
 ```bash
 cp .env.example .env
 ```
 
-La clave `cambiar-esta-clave` es la de práctica. La dirección `127.0.0.1:5435` es la que usa la API mientras corre en Ubuntu y la base corre en el contenedor. No subas el `.env`.
+La clave `cambiar-esta-clave` es la de práctica. No subas el `.env`.
 
-## 3. Crear la base, una sola vez
+Compose usa de ese archivo el usuario, la clave, el nombre de la base y los puertos. La línea `DATABASE_URL` con `127.0.0.1` es para `npm run dev` en Ubuntu. Dentro de los contenedores, Compose arma otra dirección, con el nombre `db`.
 
-Este comando baja la imagen `postgres:16`, crea el contenedor `jugando-palabras-db` y el volumen `jugando-palabras-pgdata`. Las palabras quedan en ese volumen, no en la carpeta del proyecto.
+## 3. Levantar los tres servicios
 
-Hay que ejecutarlo desde la carpeta del repositorio, para que `$PWD/db/init` encuentre el SQL de la tabla.
-
-```bash
-docker run -d \
-  --name jugando-palabras-db \
-  --restart unless-stopped \
-  -e POSTGRES_USER=lluvia \
-  -e POSTGRES_PASSWORD=cambiar-esta-clave \
-  -e POSTGRES_DB=lluvia \
-  -p 127.0.0.1:5435:5432 \
-  -v jugando-palabras-pgdata:/var/lib/postgresql/data \
-  -v "$PWD/db/init:/docker-entrypoint-initdb.d:ro" \
-  postgres:16
-```
-
-`--restart unless-stopped` vuelve a encender el contenedor cuando se reinicia la computadora, salvo que alguien lo haya detenido con `docker stop`. El puerto queda publicado solo en esta máquina.
-
-La primera vez, PostgreSQL ejecuta `db/init/001_words.sql` y crea la tabla `words`. Eso ocurre solo cuando el volumen está vacío. Esperá unos segundos y comprobá:
+Los puertos 8088 y 5435 tienen que estar libres. El 5435 queda solo en esta máquina. El 4000 de la API no se publica.
 
 ```bash
-docker exec jugando-palabras-db psql -U lluvia -d lluvia -c '\d words'
+docker compose up --build
 ```
 
-Tiene que mostrar las columnas `text`, `count`, `question` y `created_at`. Todavía no hay filas.
+La primera vez descarga imágenes y compila la pantalla. Puede tardar. Cuando los tres servicios digan que arrancaron, abrí http://127.0.0.1:8088.
 
-Si el comando dice que el nombre `jugando-palabras-db` ya existe, el contenedor ya fue creado en esa computadora. No hace falta otro `docker run`. Seguí con el paso 4 usando `docker start jugando-palabras-db`.
+Enviá una palabra. En otra pestaña tiene que aparecer sin recargar.
 
-## 4. Levantar la API
-
-En otra terminal, desde la carpeta del proyecto:
+En otra terminal, desde la misma carpeta:
 
 ```bash
-cd backend
-npm install
-npm run dev
+docker compose ps
 ```
 
-Tiene que aparecer `API en http://127.0.0.1:4000`. Dejá esa terminal abierta. Si dice que falta `DATABASE_URL`, el `.env` no está en la raíz del repositorio o el comando no se corrió desde `backend/`.
+Tiene que listar `web`, `api` y `db`.
 
-## 5. Levantar la pantalla
-
-En una tercera terminal:
+## 4. Ver las filas
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose exec db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
 ```
 
-Abrí http://127.0.0.1:5173.
+Cada fila es una palabra distinta. `count` es cuántas veces se envió. Si no hay filas, nadie envió todavía. La tabla igual existe: el SQL de `db/init/` corre cuando el volumen está vacío.
 
-Enviá una palabra. Abrí la misma dirección en otra pestaña: tiene que aparecer sin recargar. La nube arranca vacía solo la primera vez, antes de que alguien envíe.
+## La próxima vez
 
-## 6. Ver las filas
+No hace falta clonar de nuevo. Desde la carpeta del proyecto:
 
 ```bash
-docker exec jugando-palabras-db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
+docker compose up
 ```
 
-Cada fila es una palabra distinta. `count` es cuántas veces se envió. Cómo leer la tabla con más calma está en la lección 12 de [CURSO_BACKEND.md](CURSO_BACKEND.md).
+`--build` hace falta solo si cambió el código de la pantalla o de la API.
 
-## La próxima vez, en la misma computadora
-
-No repitas el `git clone` ni el `docker run`. El volumen ya tiene las palabras.
+Detener los tres, sin borrar las palabras:
 
 ```bash
-cd jugando-con-docker
-git checkout feature/persistencia
-docker start jugando-palabras-db
+docker compose stop
 ```
 
-Después, en dos terminales distintas, `npm run dev` dentro de `backend/` y dentro de `frontend/`.
-
-Si apagás la API con Ctrl+C y la volvés a levantar, las filas siguen. Se borran si se borra el volumen `jugando-palabras-pgdata`.
+`docker compose down -v` borra también el volumen y las palabras. No se usa sin querer borrar los datos.

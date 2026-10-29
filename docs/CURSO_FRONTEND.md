@@ -4,7 +4,7 @@ Este texto explica la carpeta `frontend/` para alguien que abre el proyecto por 
 
 Al terminar vas a poder señalar un archivo y decir qué hace, y vas a poder seguir una palabra desde el teclado hasta el lugar donde aparece en la nube.
 
-La pantalla habla con la API del puerto 4000. La lista que se dibuja vive en esta pestaña, y la lista que manda vive en el proceso de Node. Si recargás la página con la API en marcha, las palabras vuelven. Si la API está detenida, aparece un mensaje y la nube no puede guardar nada nuevo. Cómo se dibuja la nube no cambia: [el curso de la API](CURSO_BACKEND.md) explica quién guarda la lista.
+La pantalla habla con la API. Con `npm run dev` esa API está en el puerto 4000. Con Docker, el navegador abre el puerto 8088 y Nginx reenvía los pedidos. La lista que se dibuja vive en esta pestaña, y la lista que manda vive en PostgreSQL. Si recargás la página con la API en marcha, las palabras vuelven. Si la API está detenida, aparece un mensaje y la nube no puede guardar nada nuevo. Cómo se dibuja la nube no cambia: [el curso de la API](CURSO_BACKEND.md) explica quién guarda la lista.
 
 Para leerlo con el código al lado:
 
@@ -180,10 +180,10 @@ Está fija en el código. La pantalla todavía no deja cambiarla.
 ### La dirección de la API
 
 ```jsx
-const API_URL = 'http://127.0.0.1:4000'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:4000'
 ```
 
-El formulario manda las palabras ahí. Socket.IO se conecta a la misma dirección para recibir la lista.
+Con `npm run dev` no hay `VITE_API_URL`, y el formulario usa el puerto 4000. La imagen de Docker deja esa variable vacía: el navegador llama al mismo origen, el puerto 8088. Socket.IO usa la misma dirección.
 
 ### Los datos que recuerda la pestaña
 
@@ -202,7 +202,7 @@ const [sending, setSending] = useState(false)
 | `error` | El mensaje rojo si el envío no sirve | `''` |
 | `notice` | Un aviso que leen los lectores de pantalla | «Todavía no hay palabras.» |
 | `words` | La copia de la lista que alimenta la nube | `[]` |
-| `serverDown` | Si el puerto 4000 no responde | `false` |
+| `serverDown` | Si la API no responde | `false` |
 | `sending` | Si el envío todavía no volvió | `false` |
 
 Cada palabra de esa lista tiene esta forma:
@@ -293,7 +293,7 @@ const response = await fetch(`${API_URL}/api/words`, {
 
 Si la respuesta no es 200, el párrafo muestra `error` del servidor, por ejemplo el límite de 32 caracteres. El campo no se vacía.
 
-Si el puerto 4000 no contesta, `fetch` lanza un error. `serverDown` pasa a verdadero y el párrafo muestra: «El servidor no responde. La API tiene que estar en marcha en el puerto 4000.» La palabra escrita sigue en el campo.
+Si la API no contesta, `fetch` lanza un error. `serverDown` pasa a verdadero y el párrafo muestra: «El servidor no responde. Revisá que la aplicación esté en marcha.» La palabra escrita sigue en el campo.
 
 ### Paso 5. La lista vuelve y se vacía el campo
 
@@ -726,7 +726,7 @@ Lo que está en `public/` se copia tal cual y se puede pedir por su ruta. `/favi
 
 ### `README.md` de `frontend/`
 
-Recuerda los comandos para abrir la pantalla. Esa pantalla envía las palabras a la API del puerto 4000.
+Recuerda los comandos para abrir la pantalla en desarrollo. Esa pantalla envía las palabras a la API.
 
 ## Lección 14. Un recorrido completo, ya con todos los archivos
 
@@ -776,4 +776,4 @@ Respuestas: 1, `main.jsx`. 2, la copia que se dibuja está en `App`, dentro de `
 
 La pantalla ya envía y escucha. El curso de esa API está en [CURSO_BACKEND.md](CURSO_BACKEND.md). `WordCloud`, `placeInCloud` y `CloudBackground` siguen recibiendo una lista terminada: no les importa si salió de esta pestaña o de otra.
 
-La lista sobrevive al reinicio de la API porque está en PostgreSQL. Lo que todavía falta es meter la pantalla y la API en imágenes de Docker, y después levantar las tres juntas con Compose.
+La lista sobrevive al reinicio de la API porque está en PostgreSQL. La pantalla, la API y la base se levantan juntas con `docker compose up --build`. Cómo está armado eso está en [ARQUITECTURA.md](ARQUITECTURA.md).

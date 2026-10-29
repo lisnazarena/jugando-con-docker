@@ -169,7 +169,7 @@ jugando-con-docker/
     └── init/
 ```
 
-Al 27 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React en `frontend/`, la API en `backend/` guardando en PostgreSQL, el formulario conectado a esa API, los cursos `docs/CURSO_FRONTEND.md` y `docs/CURSO_BACKEND.md`, los pasos de `docs/LEVANTAR.md`, y `db/init/001_words.sql`. La base corre en un contenedor suelto. Faltan `docker-compose.yml`, los Dockerfile y el resto de los documentos.
+Al 29 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React, la API guardando en PostgreSQL, los cursos, `docs/LEVANTAR.md`, `docs/CONCEPTOS_DOCKER.md`, `docs/ARQUITECTURA.md`, los Dockerfile de `frontend/` y `backend/`, y `docker-compose.yml`. Faltan `docs/PRUEBAS.md` y el informe.
 
 `db/init/` es para un SQL inicial, si hace falta. La imagen de PostgreSQL es la oficial: no hace falta un Dockerfile propio para la base.
 
@@ -303,6 +303,8 @@ Tareas:
 
 Criterio de aceptación: `docker ps` muestra un contenedor de este proyecto sirviendo una parte de la app, y se puede explicar qué es la imagen y qué es el contenedor.
 
+Hecho el 29 de octubre, junto con Compose: `frontend/Dockerfile`, `backend/Dockerfile` y `docs/CONCEPTOS_DOCKER.md`. Las imágenes `jugando-con-docker-web` y `jugando-con-docker-api` están construidas.
+
 ### Jueves 29 de octubre — Docker Compose
 
 Objetivo: levantar los tres servicios con un solo comando, red interna y volumen.
@@ -316,6 +318,8 @@ Tareas:
 - Actualizar `docs/ARQUITECTURA.md`.
 
 Criterio de aceptación: `docker compose ps` lista exactamente tres servicios de este proyecto, la web abre en el puerto elegido y una palabra queda guardada.
+
+Hecho el 29 de octubre: `docker compose ps` lista `web`, `api` y `db`. http://127.0.0.1:8088 cargó la nube y una palabra enviada desde el formulario quedó en la tabla. PostgreSQL está en `127.0.0.1:5435`. La API no publica el 4000. `docs/ARQUITECTURA.md` describe eso. Falta la prueba de caídas del viernes.
 
 ### Viernes 30 de octubre — Caídas y datos
 

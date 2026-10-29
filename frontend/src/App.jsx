@@ -3,8 +3,8 @@ import { io } from 'socket.io-client'
 import WordCloud from './WordCloud.jsx'
 
 const QUESTION = 'Definí Docker en una sola palabra.'
-const API_URL = 'http://127.0.0.1:4000'
-const SERVER_DOWN = 'El servidor no responde. La API tiene que estar en marcha en el puerto 4000.'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:4000'
+const SERVER_DOWN = 'El servidor no responde. Revisá que la aplicación esté en marcha.'
 
 function timesLabel(count) {
   return count === 1 ? 'vez' : 'veces'
@@ -39,7 +39,7 @@ export default function App() {
   const wordsRef = useRef([])
 
   useEffect(() => {
-    const socket = io(API_URL)
+    const socket = io(API_URL || undefined)
     let open = true
     let synced = false
 
