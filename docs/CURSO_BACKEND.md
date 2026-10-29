@@ -348,40 +348,46 @@ Un tercer pedido con `{ "text": "   " }` no crea ni modifica una fila. La respue
 
 ## Lección 11. Qué sobrevive al detener la API
 
-Las filas están en el volumen Docker `jugando-palabras-pgdata`, montado en los datos de PostgreSQL. Ese directorio no está en el repositorio.
+Las filas están en el volumen Docker `jugando-con-docker_pgdata`, montado en los datos de PostgreSQL. Ese directorio no está en el repositorio.
 
-Detener la API no las borra. Ctrl+C, guardar un archivo con `npm run dev`, o cerrar la terminal, crean otro proceso de Node. Al volver a pedir `GET /api/words`, la palabra sigue, con el mismo `id` y el mismo `count`.
+Detener la API no las borra. Reiniciar el contenedor `api`, Ctrl+C en `npm run dev`, o cerrar la terminal, crean otro proceso de Node. Al volver a pedir `GET /api/words`, la palabra sigue, con el mismo `id` y el mismo `count`.
 
-Lo que sí las borra es borrar el volumen, con `docker volume rm` o un `docker compose down -v` el día que exista Compose. Esos comandos no se usan sin decir antes qué van a borrar.
+Lo que sí las borra es borrar el volumen, con `docker volume rm` o `docker compose down -v`. Esos comandos no se usan sin decir antes qué van a borrar.
 
 Si la API está detenida, la pantalla muestra que el servidor no responde. Cuando vuelve, el evento `words` trae las filas que PostgreSQL conservó. Si el contenedor de la base está detenido, la API arranca y se detiene enseguida con «No se pudo conectar con PostgreSQL.»
 
 ## Lección 12. Qué está en Docker y cómo ver la tabla
 
-Hoy este proyecto tiene un solo contenedor encendido. La pantalla y la API siguen siendo programas de Ubuntu.
-
-| Parte | Dónde corre | Cómo se enciende |
-| --- | --- | --- |
-| Pantalla | Ubuntu, puerto 5173 | `cd frontend && npm run dev` |
-| API | Ubuntu, puerto 4000 | `cd backend && npm run dev` |
-| PostgreSQL 16 | Contenedor `jugando-palabras-db` | `docker start jugando-palabras-db` |
-
-El contenedor publica la base solo en `127.0.0.1:5435`. Otra computadora de la red no llega a ese puerto. Los datos están en el volumen `jugando-palabras-pgdata`.
-
-Para ver qué contenedores de este proyecto existen:
+Los tres servicios se encienden juntos:
 
 ```bash
-docker ps -a --filter name=jugando
+docker compose up --build
 ```
 
-`Up` significa encendido. `Exited` significa apagado. Pueden aparecer cuatro contenedores viejos, apagados: `jugando-frontend`, `jugando-backend`, `jugando-db` y `jugando-postgres`. No son la forma actual de correr la aplicación. No hace falta encenderlos.
+| Parte | Dónde corre | Cómo se llega |
+| --- | --- | --- |
+| Pantalla | Contenedor `web`, Nginx en el puerto 80 | http://127.0.0.1:8088 |
+| API | Contenedor `api`, puerto 4000 | No está publicado. Nginx le reenvía `/api` y `/socket.io` |
+| PostgreSQL 16 | Contenedor `db` | Dentro de la red, el nombre `db` y el puerto 5432. En esta máquina, `127.0.0.1:5435` |
+
+Otra computadora de la red no llega a PostgreSQL. Los datos están en el volumen `jugando-con-docker_pgdata`.
+
+Para ver los tres:
+
+```bash
+docker compose ps
+```
+
+Pueden quedar contenedores viejos apagados, de pruebas anteriores. No son la forma actual de correr la aplicación. No hace falta encenderlos.
+
+`npm run dev` sigue existiendo para cambiar la pantalla o la API sin reconstruir la imagen. En ese modo la pantalla usa el puerto 5173 y habla directo con el 4000. La base puede ser la de Compose, que ya publica el 5435.
 
 ### Entrar a la tabla
 
-Con el contenedor encendido, este comando muestra las palabras:
+Con Compose en marcha, este comando muestra las palabras:
 
 ```bash
-docker exec jugando-palabras-db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
+docker compose exec db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
 ```
 
 `docker exec` corre un programa dentro del contenedor. `psql` es el cliente de PostgreSQL. `-d lluvia` elige la base. `-c` ejecuta una consulta y vuelve a la terminal.
@@ -400,7 +406,7 @@ Si todavía nadie envió nada, la consulta devuelve cero filas. La tabla igual e
 Para mirarla con calma, sin el `-c`:
 
 ```bash
-docker exec -it jugando-palabras-db psql -U lluvia -d lluvia
+docker compose exec db psql -U lluvia -d lluvia
 ```
 
 `-it` deja la terminal dentro de `psql`. Ahí sirven estos comandos:
@@ -424,15 +430,15 @@ La contraseña de ese ejemplo es la de `.env.example`. El archivo `.env` real no
 
 ## Lección 13. Cómo se entera la pantalla
 
-`frontend/src/App.jsx` hace dos cosas con `http://127.0.0.1:4000`.
+`frontend/src/App.jsx` habla con la API. En la imagen de Docker esa dirección queda vacía y el navegador usa el mismo origen, el puerto 8088. Con `npm run dev` usa `http://127.0.0.1:4000`.
 
 Al montar la pantalla, abre Socket.IO. El servidor le manda la lista actual en el evento `words`. Cada vez que alguien envía una palabra, ese evento vuelve a llegar, también a las otras pestañas. `App` reemplaza su copia y `WordCloud` dibuja la lista nueva sin recargar.
 
 Al apretar Enviar, después de rechazar el texto vacío, hace `POST /api/words` con `{ "text": "..." }`. Si la respuesta trae la lista, la nube se actualiza enseguida. El evento `words` trae la misma lista a las demás pestañas.
 
-Si `fetch` no logra hablar con el puerto 4000, o el socket se corta, el párrafo rojo dice: «El servidor no responde. La API tiene que estar en marcha en el puerto 4000.» «Escribí una palabra.» sigue siendo el mensaje del campo vacío. Son dos textos distintos.
+Si `fetch` no logra hablar con la API, o el socket se corta, el párrafo rojo dice: «El servidor no responde. Revisá que la aplicación esté en marcha.» «Escribí una palabra.» sigue siendo el mensaje del campo vacío. Son dos textos distintos.
 
-PostgreSQL ya corre en un contenedor suelto, publicado solo en `127.0.0.1:5435`. La API sigue en Ubuntu, no en un contenedor. Faltan el Dockerfile, la imagen y Compose. El jueves la API va a usar el nombre `db` dentro de la red de Docker, en lugar de `127.0.0.1`.
+Dentro de Compose, la API usa el nombre `db` y el puerto 5432. Esa dirección no existe en Ubuntu. La de `.env`, con `127.0.0.1:5435`, es la del modo `npm run dev`.
 
 ## Lección 14. Glosario
 
@@ -449,7 +455,7 @@ PostgreSQL ya corre en un contenedor suelto, publicado solo en `127.0.0.1:5435`.
 | Socket.IO | La conexión que permanece abierta para avisar la lista nueva |
 | Evento `words` | El aviso con la lista completa |
 | `curl` | El comando de la terminal que hace un pedido HTTP |
-| Contenedor | Un proceso aislado creado a partir de una imagen. Hoy solo la base corre así |
+| Contenedor | Un proceso aislado creado a partir de una imagen. Compose levanta `web`, `api` y `db` |
 | Volumen | El lugar donde PostgreSQL guarda los archivos de la base. Sobrevive al contenedor |
 | `psql` | El programa para ver y consultar las tablas |
 

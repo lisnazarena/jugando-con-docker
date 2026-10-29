@@ -5,8 +5,15 @@ import { Server } from 'socket.io'
 import { addWord, listWords, pool } from './words.js'
 
 const port = Number(process.env.API_PORT) || 4000
+const host = process.env.HOST || '127.0.0.1'
+const webPort = process.env.WEB_PORT || '8088'
 
-const origins = ['http://127.0.0.1:5173', 'http://localhost:5173']
+const origins = [
+  'http://127.0.0.1:5173',
+  'http://localhost:5173',
+  `http://127.0.0.1:${webPort}`,
+  `http://localhost:${webPort}`,
+]
 
 const app = express()
 app.use(cors({ origin: origins }))
@@ -62,6 +69,6 @@ try {
   process.exit(1)
 }
 
-httpServer.listen(port, '127.0.0.1', () => {
-  console.log(`API en http://127.0.0.1:${port}`)
+httpServer.listen(port, host, () => {
+  console.log(`API en http://${host}:${port}`)
 })
