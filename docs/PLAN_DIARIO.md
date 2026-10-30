@@ -1,401 +1,365 @@
 # Plan diario — Jugando con Docker: Lluvia de Palabras
 
-Proyecto universitario. Fecha límite: **martes 3 de noviembre de 2026**.
+Entrega: **martes 3 de noviembre de 2026**.
 
-Este documento es la guía de trabajo. No declara que una prueba haya pasado ni que la consigna esté cumplida: eso se anota recién cuando lo ejecutemos y lo veamos.
+Este archivo es la guía. No afirma que una prueba haya salido bien. Eso se anota en [PRUEBAS.md](PRUEBAS.md) recién cuando lo veamos.
 
-Estado al empezar (viernes 23 de octubre de 2026):
-
-- La carpeta del proyecto estaba vacía.
-- No había repositorio Git.
-- La aplicación todavía no existe.
+La planificación del **jueves 29 de octubre** no implementa pantallas, servidor ni contenedores nuevos. El primer día de construcción empieza cuando confirmes que este plan cierra.
 
 ## Cómo vamos a trabajar
 
 Cada día tiene un objetivo chico. No se programa la aplicación completa de una vez.
 
-Después de cada tarea:
+En el día de trabajo vas a tener, antes de tocar código:
 
-1. Se explica el concepto.
-2. Se ejecuta un paso concreto.
-3. Se comprueba el resultado.
-4. Si algo falla, se corrige antes de seguir.
-5. Si corresponde, se propone un commit pequeño.
+1. Objetivo.
+2. Conceptos.
+3. Explicación sencilla.
+4. Tareas.
+5. Comandos, con qué hace cada uno.
+6. Pruebas.
+7. Resultado esperado.
+8. Cuándo hacer el commit y qué mensaje usar.
+9. Cierre: qué quedó aprendido y qué sigue.
 
-La prioridad es una versión mínima que funcione, con datos que sobrevivan al contenedor y con una prueba real de qué pasa cuando un contenedor se detiene. No se agregan pantallas ni servicios extra antes de eso.
+Si algo falla, se entiende y se corrige antes de pasar al día siguiente. No se agregan herramientas nuevas sin decir para qué sirven.
 
-## Herramientas en esta máquina
+## Desde dónde partimos el 29 de octubre
 
-Comprobado el 23 de octubre de 2026:
+La carpeta ya no está vacía. Entre el 23 y el 29 se construyó una primera versión. Rehacerla desde cero no entra en los días que quedan.
 
-| Herramienta | Estado | Versión observada |
-| --- | --- | --- |
-| Ubuntu | Instalado | 22.04.4 LTS |
-| Git | Instalado | 2.34.1 |
-| Docker | Instalado y en ejecución | 28.1.1 |
-| Docker Compose | Instalado | v2.34.0 |
-| Node.js | Instalado | 24.15.0 |
-| npm | Instalado | 11.12.1 |
-| Cliente `psql` | Instalado | El servidor de la aplicación irá en un contenedor, no en el PostgreSQL del sistema |
-| GitHub CLI (`gh`) | No instalado | No es obligatorio; se puede usar el sitio de GitHub y Git |
+Ya está:
 
-Pendiente de configurar, sin hacerlo todavía:
+- Repositorio Git en esta máquina, rama `feature/contenedores`.
+- Remoto `origin`: https://github.com/lisnazarena/jugando-con-docker
+- Pantalla React con una nube. La pregunta está fija en el código.
+- API con Express y Socket.IO. Las palabras se guardan en PostgreSQL.
+- `docker-compose.yml` con tres servicios: `web`, `api` y `db`.
+- Volumen `pgdata` para los datos de la base.
+- `restart: unless-stopped` en los tres servicios.
+- Documentos de la pantalla, de la API y de cómo levantar el proyecto.
 
-- `git config user.name` no está definido. El nombre del autor de los commits hay que elegirlo antes del primer commit.
-- No hay sesión comprobada de GitHub en esta máquina.
+Todavía no está:
 
-En esta misma computadora ya hay otros contenedores en marcha (otro frontend en el puerto 8080, PostgreSQL en 5433 y 5434, una app en el puerto 3000). **No se tocan.** Este proyecto usará otros puertos y nombres propios.
+- Contraseña del profesor.
+- Banco de preguntas, categorías, alta, edición y baja.
+- Actividades separadas del banco, con su propio historial.
+- Enlace para que el alumno entre sin cuenta.
+- Pruebas anotadas de persistencia, de fallo y de recuperación.
+- Informe con evidencias.
+- Repositorio público. Hoy el remoto existe; hacerlo público es una decisión de la entrega.
 
-## Decisiones técnicas provisionales
+En esta Ubuntu, comprobado de nuevo el 29 de octubre:
 
-Se confirman el día que se instala cada pieza. La idea es usar versiones estables y conocidas:
-
-- **React con Vite**, para una app web moderna sin el instalador viejo de Create React App.
-- **Tailwind CSS**, para una interfaz clara en celular y computadora.
-- **Node.js 22 en la imagen Docker** (`node:22-bookworm`). En la máquina hay Node 24, suficiente para practicar antes de Docker. Dentro del contenedor se fija Node 22, que es una línea LTS muy documentada. Si el primer día de backend conviene usar el Node 24 ya instalado, se anota y se mantiene la misma versión mayor en la imagen.
-- **Express 4** y **Socket.IO 4**.
-- **PostgreSQL 16** (`postgres:16`), con los datos en un volumen de Docker.
-- **Docker Compose** para definir los tres servicios en la máquina local.
-- Sin Kubernetes, sin Grafana y sin servicios pagos.
-
-## Decisión del 23 de octubre
-
-Quedó elegido el camino de trabajo: **opción A** (sitio, API y PostgreSQL, con reinicio automático y un volumen). La opción C queda como reserva. La consulta al profesor se hará más adelante. Hasta esa respuesta, y hasta ver las pruebas, no se da la consigna por cumplida.
-
-## Arquitectura recomendada (todavía no verificada)
-
-La consigna pide tres contenedores, una aplicación web, recuperación o réplica si uno cae, y datos fuera del ciclo de vida del contenedor.
-
-Hay una duda abierta: no sabemos si alcanza con que Docker vuelva a levantar el mismo contenedor, o si el profesor quiere otra instancia que siga atendiendo mientras la primera está caída. **Reiniciar no es lo mismo que replicar.** Hasta preguntarlo, no se afirma que la consigna esté cumplida.
-
-### Opción A — recomendada para construir y entregar
-
-Tres servicios distintos. Si uno se detiene, Docker lo vuelve a crear según una política de reinicio. Es recuperación del mismo servicio, no alta disponibilidad.
-
-| Contenedor | Qué ejecuta | Cómo habla con los demás |
-| --- | --- | --- |
-| `web` | Nginx sirve el sitio React ya compilado y reenvía `/api` y Socket.IO hacia `api` | El navegador solo habla con `web` |
-| `api` | Node.js, Express y Socket.IO | Lee y escribe en `db`; avisa a los navegadores conectados |
-| `db` | PostgreSQL 16 | Solo acepta conexiones desde la red interna de Compose |
-
-Datos: un volumen Docker montado en los datos de PostgreSQL. El volumen no se borra al detener, eliminar o recrear el contenedor `db`.
-
-Si un contenedor se detiene:
-
-- Docker lo inicia de nuevo (`restart: unless-stopped`).
-- Durante esos segundos el servicio afectado no responde.
-- Si cae `web`, la página deja de cargar hasta que vuelve.
-- Si cae `api`, no entran palabras nuevas y la nube no se actualiza hasta que vuelve. Lo ya guardado sigue en `db`.
-- Si cae `db`, la API responde error hasta que PostgreSQL vuelve. Las palabras guardadas siguen en el volumen.
-
-Si se elimina y se recrea el contenedor, la imagen se vuelve a usar y el volumen conserva la base. Eso hay que probarlo y anotarlo en `docs/PRUEBAS.md`. El servicio no sigue disponible durante la caída: hay una interrupción corta.
-
-Cumple, si las pruebas salen bien: tres contenedores, aplicación web, persistencia fuera del contenedor, recuperación automática.
-
-Queda pendiente: disponibilidad continua y una réplica que atienda mientras la otra está caída.
-
-### Opción B — balanceador y dos copias de la app
-
-| Contenedor | Rol |
+| Herramienta | Estado |
 | --- | --- |
-| Balanceador | Reparte las visitas |
-| App 1 | Frontend y API |
-| App 2 | Otra copia igual |
-| Base de datos | PostgreSQL |
+| Git 2.34.1 | Instalado |
+| Docker 28.1.1 | Instalado |
+| Docker Compose v2.34.0 | Instalado |
+| Node.js 24.15.0 y npm 11.12.1 | Instalados. Sirven para desarrollar. Las imágenes usan Node 22 |
+| Navegador | Hace falta para las pruebas de la pantalla |
 
-Son cuatro contenedores si la base también va en Docker. La consigna pide tres. Descartada como diseño principal.
+No hace falta instalar Kubernetes, Grafana ni un PostgreSQL aparte en Ubuntu. La base del proyecto es el contenedor `db`.
 
-Poner PostgreSQL fuera de Docker, en el sistema Ubuntu, bajaría a tres contenedores, pero mezcla el trabajo con un servicio de la máquina y es más difícil de reproducir en otra computadora. No se recomienda.
+`git config user.name` se configura el día del commit si todavía falta, y se explica antes de ejecutarlo. No se cambia la configuración de Git sin decirlo.
 
-### Opción C — réplica real, solo si el profesor la exige
+Hay otros proyectos usando puertos en esta máquina. Este sigue en **8088** para la web y en **127.0.0.1:5435** para PostgreSQL.
 
-Docker Swarm en esta misma Ubuntu, sin pagar nada:
+## Decisiones del 29 de octubre
 
-- Un servicio `app` con **dos réplicas** de la misma imagen (el sitio y la API juntos).
-- Un servicio `db` con **una** instancia de PostgreSQL y un volumen.
-- Total: tres contenedores.
-- El reparto de visitas lo hace el enrutamiento de Swarm. No hace falta un cuarto contenedor balanceador.
-- Si una réplica de `app` cae, la otra sigue respondiendo y Swarm levanta un reemplazo.
+### Contenedores
 
-Límite importante: Socket.IO guarda las conexiones en la memoria de cada proceso. Dos copias no ven los mismos clientes. Para que la nube se actualice en todas, las dos copias tendrían que avisarse por PostgreSQL (`LISTEN/NOTIFY`). Eso se estudia solo si hace falta la opción C.
+Se mantiene la opción de tres servicios: sitio, API y PostgreSQL. El razonamiento está en [ARQUITECTURA.md](ARQUITECTURA.md).
 
-`restart` de Compose no crea esta segunda copia. Swarm sí crea otra instancia. Hay que demostrarlo con una prueba, no con el nombre de la configuración.
+El mecanismo de la entrega es el reinicio automático del mismo contenedor. No es una réplica. No se afirma que la consigna quede cumplida hasta la respuesta del profesor y hasta ver las pruebas.
 
-### Qué se hace con la duda
+No se agrega un cuarto contenedor. El navegador ya llega a la API a través de Nginx, que vive dentro de `web`.
 
-Antes del jueves 29 se envía al profesor una pregunta corta (texto más abajo). Se construye la opción A porque se puede aprender, probar y explicar. Si la respuesta pide que el servicio siga en pie durante la falla, el viernes 30 se evalúa pasar a la opción C sin agregar un cuarto contenedor.
+### Aplicación
 
-Pregunta sugerida:
+La prioridad sigue siendo explicar Docker. La aplicación se mantiene chica, con estas piezas porque sin ellas no se puede mostrar el aula que pediste:
 
-> En la consigna, cuando un contenedor cae, ¿alcanza con que Docker lo reinicie automáticamente (hay unos segundos sin servicio y después vuelve el mismo contenedor), o hace falta una segunda instancia que siga atendiendo mientras la primera está detenida? El proyecto tiene exactamente tres contenedores: sitio web, API y PostgreSQL, con los datos en un volumen.
+- Una contraseña compartida, solo en el entorno del backend.
+- Un banco de preguntas en PostgreSQL, con categorías.
+- Actividades que copian el texto de la pregunta y guardan sus propias palabras.
+- Alumnos que entran por un enlace, sin cuenta.
 
-## Decisión del 26 de octubre — aspecto de la pantalla
+No hay registro, roles, correo, recuperación de contraseña, OAuth ni JWT. La sesión es una cookie `HttpOnly` y una fila en PostgreSQL. El día que se construya se explica con un ejemplo, antes de escribir el código.
 
-La idea de una ventana de Windows 95, con tipografía en píxeles, queda reemplazada. La pantalla de la entrega es la actual, más moderna:
+### Si el tiempo no alcanza
 
-- Escritorio verde oscuro y una ventana redondeada, en verde menta, sin título del proyecto.
-- La pregunta sigue fija en el código: «Definí Docker en una sola palabra.» El docente todavía no puede cambiarla desde la pantalla.
-- La nube la arman las palabras. Detrás hay una silueta suave, también verde menta.
-- Cada palabra distinta se dibuja una sola vez. Si se repite, esa misma se ve más grande que las demás.
-- La silueta y las palabras se mueven despacio. Quien tenga activada la opción de reducir movimiento las ve quietas.
-- Las palabras siguen solo en la pestaña del navegador. Este cambio no incluye servidor, base ni Docker.
+Se recorta en este orden, y se escribe el recorte en el informe:
 
-## Estructura de carpetas
-
-Prevista:
-
-```text
-jugando-con-docker/
-├── README.md
-├── .gitignore
-├── .env.example
-├── docker-compose.yml
-├── docs/
-│   ├── PLAN_DIARIO.md
-│   ├── CURSO_FRONTEND.md
-│   ├── CURSO_BACKEND.md
-│   ├── LEVANTAR.md
-│   ├── ARQUITECTURA.md
-│   ├── CONCEPTOS_DOCKER.md
-│   ├── PRUEBAS.md
-│   └── INFORME_FINAL.md
-├── frontend/
-│   ├── Dockerfile
-│   └── (proyecto React)
-├── backend/
-│   ├── Dockerfile
-│   └── (proyecto Node.js)
-└── db/
-    └── init/
-```
-
-Al 29 de octubre ya están el README, `.gitignore`, `.env.example`, el proyecto React, la API guardando en PostgreSQL, los cursos, `docs/LEVANTAR.md`, `docs/CONCEPTOS_DOCKER.md`, `docs/ARQUITECTURA.md`, los Dockerfile de `frontend/` y `backend/`, y `docker-compose.yml`. Faltan `docs/PRUEBAS.md` y el informe.
-
-`db/init/` es para un SQL inicial, si hace falta. La imagen de PostgreSQL es la oficial: no hace falta un Dockerfile propio para la base.
-
-Puertos previstos, para no chocar con lo que ya está en uso:
-
-- Sitio web publicado en el host: **8088**.
-- API, en desarrollo sin Docker: **4000**.
-- PostgreSQL, solo en la red de Docker. Si hace falta inspeccionarlo desde Ubuntu, se publicará en **127.0.0.1:5435**, no hacia toda la red.
-
-## Git y GitHub
-
-Git y GitHub no son la misma cosa.
-
-- **Git** guarda el historial del proyecto en esta computadora.
-- **GitHub** es un sitio donde se puede publicar una copia de ese historial.
-
-Orden previsto el sábado 24:
-
-1. Explicar repositorio, commit, rama e historial.
-2. Crear `.gitignore` y `.env.example`.
-3. Configurar el nombre de autor de Git (el correo ya está definido en esta máquina).
-4. Crear el repositorio local.
-5. Crear en GitHub el repositorio `jugando-con-docker`.
-6. Conectarlos y subir el primer commit con un README.
-
-El 23 de octubre el repositorio remoto quedó en `https://github.com/lisnazarena/jugando-con-docker`, rama `main`, commit `18dad7b`. Se mantiene **privado** durante el desarrollo. Antes de la entrega se decide si pasa a público o si el profesor entra como colaborador.
-
-No se suben `.env`, contraseñas, `node_modules`, compilados, datos de PostgreSQL ni volúmenes. Antes de cada `git push` se revisa que no haya secretos. Los comandos de publicación se explican y los ejecutás vos; no se publican solos.
-
-`gh` no está instalado. Se puede crear el repositorio desde el navegador. Instalar `gh` es opcional.
-
-## Documentos del proyecto
-
-| Archivo | Cuándo se completa | Qué contiene |
-| --- | --- | --- |
-| `docs/PLAN_DIARIO.md` | Desde el 23 de octubre | Este cronograma y los criterios de cada día |
-| `docs/ARQUITECTURA.md` | 23 al 29 de octubre | Contenedores, redes, volúmenes y la duda de réplica o reinicio |
-| `docs/CONCEPTOS_DOCKER.md` | 28 al 30 de octubre | Imagen, contenedor, volumen, red, reinicio, réplica |
-| `docs/PRUEBAS.md` | 30 de octubre al 1 de noviembre | Pasos, resultado real y evidencias |
-| `docs/INFORME_FINAL.md` | 2 de noviembre | Borrador del informe |
-| `README.md` | 24 de octubre, y se actualiza | Cómo instalar, ejecutar y probar |
-
-No se inventan resultados de pruebas.
-
-## Cronograma
-
-### Viernes 23 de octubre — Preparación
-
-Objetivo: saber desde dónde partimos, elegir la arquitectura de trabajo y dejar este plan.
-
-Tareas:
-
-- Comprobar que la carpeta está vacía y no es un repositorio Git.
-- Anotar las herramientas instaladas.
-- Comparar las opciones de tres contenedores.
-- Redactar la pregunta para el profesor.
-- Crear este archivo.
-
-Criterio de aceptación: existe `docs/PLAN_DIARIO.md`, la opción A queda como camino de trabajo y la opción C queda escrita como alternativa, sin decir que la consigna ya está cumplida.
-
-Evidencia: este archivo y la lista de herramientas.
-
-Commit: todavía no. El repositorio se crea el sábado.
-
-### Sábado 24 de octubre — Git, GitHub y esqueleto
-
-Objetivo: tener un repositorio local, el remoto en GitHub y los archivos que evitan subir secretos. El remoto queda privado hasta la entrega.
-
-Tareas:
-
-- Crear la estructura de carpetas vacía.
-- Escribir `README.md`, `.gitignore` y `.env.example`.
-- Inicializar Git y hacer el primer commit.
-- Crear el repositorio en GitHub y conectar el remoto.
-- Subir la primera versión cuando vos confirmes el comando.
-
-Criterio de aceptación: `git status` está limpio, `git log` muestra el primer commit y el repositorio se abre en el navegador con la cuenta de GitHub. Mientras sea privado, no se ve sin iniciar sesión.
-
-### Domingo 25 de octubre — Frontend
-
-Objetivo: una pantalla que muestre una pregunta, un formulario para enviar una palabra y la nube. Sin título de presentación. El aspecto que queda es el moderno descripto en la decisión del 26 de octubre. La primera idea, una ventana de Windows 95 en píxeles, se deja de lado.
-
-Tareas:
-
-- Crear el proyecto React con Vite dentro de `frontend/`.
-- Agregar Tailwind.
-- Maquetar la pregunta, el campo de texto, el botón y la nube, legible en el celular.
-- Abrirla en el navegador y probarla en un ancho de celular.
-
-Criterio de aceptación: la pantalla carga con el estilo moderno, el formulario no se envía a ningún servidor todavía y se entiende en una ventana angosta. Cada palabra distinta aparece una sola vez. Los estados de carga y error de red se preparan cuando exista el servidor.
-
-### Lunes 26 de octubre — Aspecto moderno, y después el backend
-
-El estilo de la pantalla queda cerrado en la decisión de este día. La fuente en píxeles se quita del proyecto. El servidor sigue pendiente y no se empieza en este paso.
-
-Objetivo del backend, cuando se retome: que dos navegadores vean la misma palabra apenas uno la envía.
-
-Tareas:
-
-- Crear `backend/` con Express y Socket.IO.
-- Guardar las palabras solo en memoria, a propósito, para ver el límite.
-- Conectar el formulario a la API.
-- Abrir dos clientes y comprobar la actualización.
-- Mostrar un mensaje claro si el servidor no responde.
-
-Criterio de aceptación: una palabra enviada en un navegador aparece en el otro sin recargar. Al detener el servidor, las palabras de memoria se pierden: eso motiva la base del martes.
-
-### Martes 27 de octubre — Persistencia
-
-Objetivo: que las palabras sobrevivan aunque se apague el proceso de la API.
-
-Tareas:
-
-- Definir una tabla simple: texto de la palabra, cantidad o cada envío, y la pregunta de la actividad.
-- Guardar y volver a leer desde PostgreSQL.
-- Decidir si la base corre ya en Docker o, por un día, en un contenedor suelto antes de Compose.
-- Comprobar que borrar el contenedor de la API no borra las filas.
-
-Criterio de aceptación: se reinicia la API, se vuelven a consultar las palabras y siguen ahí. El archivo de datos de PostgreSQL no está dentro del código del repositorio.
-
-### Miércoles 28 de octubre — Dockerfiles
-
-Objetivo: construir una imagen del frontend y una de la API, y distinguir imagen de contenedor.
-
-Tareas:
-
-- Escribir los Dockerfiles.
-- Construir las imágenes.
-- Arrancar un contenedor y mirar logs, puertos y estado.
-- Anotar los conceptos en `docs/CONCEPTOS_DOCKER.md`.
-
-Criterio de aceptación: `docker ps` muestra un contenedor de este proyecto sirviendo una parte de la app, y se puede explicar qué es la imagen y qué es el contenedor.
-
-Hecho el 29 de octubre, junto con Compose: `frontend/Dockerfile`, `backend/Dockerfile` y `docs/CONCEPTOS_DOCKER.md`. Las imágenes `jugando-con-docker-web` y `jugando-con-docker-api` están construidas.
-
-### Jueves 29 de octubre — Docker Compose
-
-Objetivo: levantar los tres servicios con un solo comando, red interna y volumen.
-
-Tareas:
-
-- Escribir `docker-compose.yml`.
-- Pasar la configuración por variables, con el ejemplo en `.env.example`.
-- No publicar PostgreSQL hacia toda la red.
-- Contar los contenedores del proyecto y confirmar que son tres.
-- Actualizar `docs/ARQUITECTURA.md`.
-
-Criterio de aceptación: `docker compose ps` lista exactamente tres servicios de este proyecto, la web abre en el puerto elegido y una palabra queda guardada.
-
-Hecho el 29 de octubre: `docker compose ps` lista `web`, `api` y `db`. http://127.0.0.1:8088 cargó la nube y una palabra enviada desde el formulario quedó en la tabla. PostgreSQL está en `127.0.0.1:5435`. La API no publica el 4000. `docs/ARQUITECTURA.md` describe eso. Falta la prueba de caídas del viernes.
-
-### Viernes 30 de octubre — Caídas y datos
-
-Objetivo: probar, sin adivinar, qué pasa al detener un contenedor y al recrearlo.
-
-Tareas:
-
-- Revisar la política de reinicio.
-- Detener `web`, `api` y `db` por separado y anotar tiempos y síntomas.
-- Eliminar el contenedor `db` y volver a crearlo sin borrar el volumen.
-- Comprobar que las palabras siguen.
-- Escribir el resultado real en `docs/PRUEBAS.md`.
-- Si el profesor pidió réplica, evaluar la opción C y no llamarla alta disponibilidad hasta verla funcionar.
-
-Criterio de aceptación: hay una nota de lo observado para reinicio y para recreación, y una comprobación de que los datos siguen después de recrear `db`.
-
-### Sábado 31 de octubre — Varios clientes
-
-Objetivo: usar la app como en el aula y corregir solo fallos que impidan la entrega.
-
-Tareas:
-
-- Abrir varios clientes.
-- Enviar palabras repetidas y comprobar que lo más repetido se ve más grande.
-- Anotar errores de red o de reconexión.
-- No agregar funciones nuevas si todavía falla la persistencia o el reinicio.
-
-Criterio de aceptación: el flujo principal funciona con más de un cliente y los fallos graves quedan corregidos o escritos como límite conocido.
-
-### Domingo 1 de noviembre — Repetir desde cero
-
-Objetivo: seguir el README en limpio y ver si otra persona podría levantar el proyecto.
-
-Tareas:
-
-- Bajar los contenedores del proyecto.
-- Volver a levantarlos solo con los pasos del README.
-- Repetir una prueba corta de persistencia y de reinicio.
-- Corregir el README donde un paso no coincida con lo que pasó.
-
-Criterio de aceptación: una pasada completa, anotada, sin pasos que solo funcionen porque la máquina ya estaba preparada.
-
-### Lunes 2 de noviembre — Informe y capturas
-
-Objetivo: dejar el material para el video o el PDF.
-
-Tareas:
-
-- Completar README e informe con lo que sí se probó.
-- Capturar contenedores, volúmenes, la aplicación y una caída con recuperación.
-- Escribir el guion con tus palabras.
-- Revisar que GitHub tenga esa versión y que no haya secretos.
-
-Criterio de aceptación: el informe separa hechos observados y límites, e incluye la diferencia entre reiniciar y replicar.
-
-### Martes 3 de noviembre — Entrega
-
-Objetivo: una última pasada y una explicación oral breve.
-
-Tareas:
-
-- Levantar el proyecto con el README.
-- Enviar una palabra y verla en otro cliente.
-- Revisar el video o el PDF y el repositorio.
-- Practicar la explicación: qué hay en cada contenedor, dónde están los datos y qué pasa si uno se detiene.
-
-Criterio de aceptación: el proyecto levanta, la prueba corta funciona y podés explicar la arquitectura sin leer el informe palabra por palabra.
+1. No se recortan las pruebas de volumen, de fallo y de reinicio.
+2. No se recorta la explicación de reinicio frente a réplica.
+3. Se puede dejar la categoría como una lista fija, sin pantalla para inventar categorías nuevas.
+4. Se puede dejar la edición visual más simple si crear, iniciar, responder y cerrar ya funcionan.
+5. No se agrega una segunda copia del servicio.
 
 ## Riesgos
 
-- La duda de réplica o reinicio puede cambiar el viernes 30. Por eso la opción C está escrita, pero no se construye antes de tiempo.
-- Los puertos 3000, 8080, 5433 y 5434 ya están ocupados por otros proyectos.
-- Dos instancias de la API no comparten Socket.IO sin un mecanismo extra.
-- Node 24 en la máquina y Node 22 en la imagen pueden diferir. Se fija la versión en el Dockerfile y se prueba dentro del contenedor.
-- Un volumen borrado con `docker volume rm` o `docker compose down -v` elimina las palabras. Esos comandos no se usan sin explicar el efecto y sin tu autorización.
+- La respuesta del profesor puede pedir una réplica. La alternativa está escrita. No se construye antes de esa respuesta.
+- Meter preguntas y actividades cambia la tabla única `words`. La nube actual se mantiene hasta que una actividad nueva pueda recibir una palabra. Recién ahí se deja de usar la lista vieja.
+- Matar un contenedor para la prueba de fallo corta la aplicación unos segundos. Se hace en esta máquina, con este proyecto, y se avisa antes.
+- `docker compose down -v` borra el volumen y los datos. No se usa en las pruebas de persistencia.
+- Dos copias de la API no comparten las conexiones de Socket.IO. Por eso no se promete una réplica de la nube en vivo.
+- Publicar el repositorio sin mirar el historial podría subir una contraseña. Antes del push público se revisa.
 
-## Fuera de alcance hasta cumplir lo obligatorio
+## Jueves 29 de octubre — Planificación
 
-Cuentas de usuario, login del docente, varias aulas, gráficos de monitoreo, Kubernetes y cualquier servicio pago.
+**Objetivo.** Dejar escrita la arquitectura, el cronograma y los documentos, sin implementar la aplicación nueva.
+
+**Conceptos.** Contenedor, reinicio, réplica, volumen, pregunta y actividad.
+
+**Explicación sencilla.** Hoy no se programa. Se decide cómo van a convivir tres programas (la pantalla, el servidor y la base) y qué significa «si uno falla, que se recupere». También se separa la pregunta, que se reutiliza, de la actividad, que es la vez que esa pregunta se usa en clase.
+
+**Tareas.**
+
+- Leer la consigna y compararla con lo que ya hay en el repositorio.
+- Escribir la diferencia entre reiniciar y replicar.
+- Actualizar el README, este plan, la arquitectura y el glosario.
+- Crear el registro de pruebas y el borrador del informe, vacíos de resultados.
+- Esperar tu confirmación antes del viernes.
+
+**Comandos.** Ninguno de construcción. Para mirar el punto de partida, si querés:
+
+```bash
+docker compose ps
+git status
+git log --oneline -5
+```
+
+`docker compose ps` lista los contenedores de este proyecto y dice si están en marcha. `git status` dice si hay cambios sin guardar. `git log` muestra los últimos commits.
+
+**Pruebas.** No corresponden. Las pruebas de la consigna quedan para el lunes 2.
+
+**Resultado esperado.** Los documentos describen la versión que ya corre y marcan como pendiente el panel, el banco y las pruebas.
+
+**Git.** Al terminar, si estás de acuerdo, un commit solo de documentación. Mensaje propuesto:
+
+```text
+Dejar por escrito la arquitectura de tres contenedores y el plan hasta la entrega.
+```
+
+No se sube a GitHub hasta que lo pidas.
+
+**Cierre.** Queda claro qué ya existe, qué falta y por qué el viernes no empieza por Docker. Docker ya levanta los tres servicios. Falta el modelo del aula y, después, las pruebas que lo demuestran.
+
+## Viernes 30 de octubre — Preguntas y actividades en la base
+
+**Objetivo.** Tener en PostgreSQL el banco y las actividades, con datos de ejemplo, sin mezclar las respuestas de dos clases. La pantalla de la nube actual sigue abriendo.
+
+**Conceptos.** Tabla, fila, clave, volumen, copia del texto de la pregunta.
+
+**Explicación sencilla.** Una tabla es una planilla. Cada pregunta es una fila del banco. Cada vez que el profesor usa una pregunta en el aula, se crea otra fila: la actividad. Esa fila copia el enunciado. Si el lunes la pregunta decía una cosa y el viernes el profesor la reescribe, la actividad del lunes sigue mostrando lo que se usó el lunes. Las palabras apuntan a la actividad, no a «la nube en general».
+
+Las categorías empiezan como filas ya cargadas: Tecnología, Informática, Docker y contenedores, Programación, Educación, Trabajo en equipo y Temas libres.
+
+**Tareas.**
+
+- Dibujar las tablas en [ARQUITECTURA.md](ARQUITECTURA.md) si el diseño cambia al escribir el SQL.
+- Agregar el SQL inicial de categorías, preguntas, actividades, palabras por actividad y sesiones.
+- Cargar unas pocas preguntas de ejemplo sobre Docker, sin inventar un generador.
+- Comprobar con consultas que dos actividades de la misma pregunta no comparten palabras.
+- No apagar la nube actual: la tabla `words` sigue hasta el domingo.
+- Explicar cada archivo antes de darlo por cerrado.
+
+**Comandos.** Se explican en el momento, porque dependen de cómo quede el SQL. La idea es consultar la base que ya corre:
+
+```bash
+docker compose exec db psql -U lluvia -d lluvia
+```
+
+`docker compose exec` entra a un contenedor que ya está en marcha. `db` es el servicio de PostgreSQL. `psql` es el programa para escribir consultas. `-U lluvia` elige el usuario de la base y `-d lluvia` elige la base. Salir es `\q`.
+
+Si el contenedor no está levantado, primero:
+
+```bash
+docker compose up -d db
+```
+
+`-d` lo deja corriendo y devuelve la terminal.
+
+**Pruebas.**
+
+- Insertar dos actividades de la misma pregunta de ejemplo.
+- Insertar una palabra en cada una.
+- Consultar y ver que cada lista trae solo la suya.
+- Cambiar el texto de la pregunta en el banco y ver que la actividad conserva el texto copiado.
+
+**Resultado esperado.** Las consultas muestran filas distintas por actividad. http://127.0.0.1:8088 sigue mostrando la nube vieja.
+
+**Git.** Un commit al terminar las pruebas. Mensaje propuesto:
+
+```text
+Guardar preguntas y actividades por separado para que cada clase conserve sus respuestas.
+```
+
+**Cierre.** Ya se puede explicar la diferencia entre el banco y una clase. El sábado esa diferencia pasa a tener dueño: solo el profesor escribe en el banco.
+
+## Sábado 31 de octubre — Contraseña y panel del profesor
+
+**Objetivo.** Que solo quien conoce la contraseña cree preguntas, elija una, inicie una actividad y la cierre.
+
+**Conceptos.** Variable de entorno, cookie, comprobación en el servidor.
+
+**Explicación sencilla.** La contraseña no se escribe en el código. Se pone en `.env`, que Git ignora, y el contenedor `api` la recibe con el nombre `TEACHER_PASSWORD`. `.env.example` muestra el nombre con un valor falso.
+
+El profesor la escribe una vez en una pantalla simple. El navegador la manda al servidor. Si coincide, el servidor guarda en PostgreSQL la huella de un número al azar y le deja al navegador una cookie que JavaScript no puede leer. Los pedidos del panel llevan esa cookie. Si no está, el servidor niega el pedido aunque alguien arme la dirección a mano.
+
+Los alumnos no pasan por esa pantalla. El domingo van a usar otro enlace.
+
+La misma regla vale para Socket.IO: un aviso de «se abrió la actividad» o «se cerró» solo sale de una conexión que tenga la sesión. Un alumno conectado no puede emitir esos avisos.
+
+**Tareas.**
+
+- Agregar `TEACHER_PASSWORD` al ejemplo de variables, sin una contraseña real.
+- Pantalla de ingreso y panel mínimo: listar, crear, editar, borrar, elegir pregunta, iniciar y finalizar.
+- Rechazar esas operaciones sin sesión, y mostrarlo en el navegador.
+- Dejar escrito qué pasa si se reinicia `api`: la sesión sigue porque la fila está en la base, no en la memoria del proceso.
+
+**Comandos.**
+
+```bash
+cp .env.example .env
+```
+
+Solo si `.env` todavía no existe. Copia el ejemplo. Después se edita la contraseña del profesor en `.env` y ese archivo no se commitea.
+
+Para la versión de todos los días, cuando el cambio ya esté en la imagen:
+
+```bash
+docker compose up --build -d
+```
+
+Construye las imágenes de nuevo y vuelve a crear los contenedores. El volumen de la base no se borra con este comando.
+
+Durante el día, para ver el cambio más rápido, se puede usar el servidor de desarrollo. Se explica ese camino si hace falta, en dos terminales, sin reemplazar la prueba final dentro de Docker.
+
+**Pruebas.**
+
+- Contraseña correcta: entra el panel.
+- Contraseña incorrecta: no entra.
+- Crear una pregunta y verla en la lista.
+- Sin cookie, la API no crea una pregunta. Se prueba desde el navegador y con una petición que se explica en el momento.
+- La contraseña no aparece en el código del frontend ni en la pestaña de red como un valor guardado en React.
+
+**Resultado esperado.** El panel funciona en el navegador. Un pedido administrativo sin sesión recibe un rechazo del servidor.
+
+**Git.** Commit propuesto:
+
+```text
+Exigir la contraseña del profesor en el servidor antes de administrar preguntas y actividades.
+```
+
+**Cierre.** El permiso quedó en el servidor, no escondido en la pantalla. El domingo los alumnos usan la actividad sin esa contraseña.
+
+## Domingo 1 de noviembre — Alumnos y nube de una actividad
+
+**Objetivo.** Que un alumno abra un enlace, envíe palabras y vea la nube junto con otra persona, solo mientras la actividad está abierta.
+
+**Conceptos.** Sala de Socket.IO, código de la actividad, actualización en vivo.
+
+**Explicación sencilla.** Cada actividad tiene un código corto. El enlace lleva ese código. Quien lo abre no se registra: el servidor mira si esa actividad está abierta y, si lo está, acepta una palabra. La palabra se suma en las filas de esa actividad. El servidor avisa solo a los navegadores que están mirando ese mismo código. Otra actividad, aunque use la misma pregunta del banco, no se entera.
+
+Si el profesor cierra la actividad, el formulario deja de enviar y las palabras ya guardadas siguen en la base.
+
+**Tareas.**
+
+- Pantalla del alumno con la pregunta copiada en la actividad, el campo de una palabra y la nube.
+- Unir la nube en vivo a esa actividad.
+- Quitar el uso de la lista global vieja cuando este camino ya reciba una palabra de prueba.
+- Impedir desde la API que ese enlace cree preguntas o cierre la actividad.
+- Probar en dos ventanas.
+
+**Comandos.** Los de levantar Compose, más abrir dos direcciones en el navegador. El puerto sigue siendo 8088. La ruta exacta sale del código de ese día; no se inventa ahora.
+
+**Pruebas.**
+
+- El profesor inicia la actividad y copia el enlace.
+- Dos navegadores envían palabras, algunas repetidas.
+- La repetida se ve más grande en los dos, sin recargar.
+- Al finalizar, un envío nuevo no entra.
+- Una segunda actividad de la misma pregunta empieza vacía.
+- Editar la pregunta del banco no cambia el texto de la actividad ya hecha.
+
+**Resultado esperado.** El flujo del aula se recorre entero. Los fallos que impidan ese flujo se corrigen el mismo día. Un detalle visual que no impida la entrega se anota y no abre otra función.
+
+**Git.** Commit propuesto:
+
+```text
+Mostrar la nube en vivo de una sola actividad para que otra clase no mezcle sus palabras.
+```
+
+**Cierre.** La aplicación ya sirve para la demostración. El lunes no se le agregan pantallas: se la somete a las pruebas de Docker.
+
+## Lunes 2 de noviembre — Volumen, fallo y recuperación
+
+**Objetivo.** Ver, y anotar, qué pasa con los datos y con el servicio cuando un contenedor se detiene o se recrea.
+
+**Conceptos.** Volumen, detener, borrar un contenedor, reinicio automático, corte del servicio.
+
+**Explicación sencilla.** El contenedor es el programa en marcha. El volumen es el disco de la base, afuera de ese programa. Apagar el programa no borra el disco. Borrar el contenedor y crear otro con la misma imagen tampoco, si el disco sigue conectado. Borrar el volumen sí.
+
+El reinicio automático es Docker volviendo a prender el mismo servicio cuando el proceso se cae. Mientras tanto la página, o la base, no contesta. No hay otro contenedor gemelo tomando el lugar.
+
+**Tareas.**
+
+- Seguir [PRUEBAS.md](PRUEBAS.md) y completar la columna de resultados con lo observado, incluidos los tiempos.
+- Hacer la prueba de persistencia: pregunta, actividad, varias palabras, recrear `db`, volver a ver los datos.
+- Provocar la caída de `web`, de `api` y de `db` por separado.
+- Distinguir en la nota un `stop` manual, que deja el contenedor detenido, de una caída del proceso, que `unless-stopped` vuelve a iniciar.
+- Sacar las capturas de contenedores, volumen, datos después de recrear y de la recuperación.
+- Actualizar el glosario si una definición no coincidió con lo visto.
+- Si el profesor ya pidió réplica, parar y decidir con vos antes de cambiar la arquitectura. No llamarle réplica al reinicio.
+
+**Comandos.** Están listados en [PRUEBAS.md](PRUEBAS.md). Cada uno se vuelve a explicar antes de ejecutarlo. No se usa `docker compose down -v`.
+
+**Pruebas.** Las de persistencia y las de fallo. También una pasada corta del flujo del aula después de recrear `db`.
+
+**Resultado esperado.** Un registro con hechos: qué se ejecutó, qué se vio, cuánto tardó en volver y qué límite queda. La aplicación responde otra vez al final.
+
+**Git.** Commit propuesto:
+
+```text
+Registrar las pruebas de volumen y de reinicio con lo que se observó en cada contenedor.
+```
+
+**Cierre.** Ya se puede explicar la consigna de Docker con una prueba hecha. El martes se arma la entrega, no se abre otra función.
+
+## Martes 3 de noviembre — Entrega
+
+**Objetivo.** Dejar el informe, las capturas, el guion y una última pasada del proyecto.
+
+**Conceptos.** Repositorio público, historial, secreto.
+
+**Explicación sencilla.** GitHub es la copia del historial en internet. Público significa que cualquiera con el enlace puede ver el código. Antes de eso se revisa que no viaje `.env`, una contraseña real ni los archivos del volumen. El informe solo cuenta lo que las pruebas mostraron.
+
+**Tareas.**
+
+- Levantar el proyecto siguiendo el README. Corregir el README donde un paso no coincida.
+- Completar [INFORME_FINAL.md](INFORME_FINAL.md) y el guion del video con tus palabras.
+- Revisar la lista de capturas.
+- Mirar `git status` y el historial antes de publicar.
+- Si estás de acuerdo, pasar el repositorio a público y subir la rama que corresponda. Los comandos se explican ese día. No se fuerza un push.
+- Ensayar la explicación oral: qué hay en cada contenedor, dónde están los datos y qué pasa si uno se detiene.
+
+**Comandos.** Los de levantar, más los de Git que hagan falta para publicar. No se adelantan acá los de cambiar la visibilidad del remoto.
+
+**Pruebas.** Una pasada corta: entrar como profesor, abrir la actividad, enviar una palabra en otro navegador, ver los tres contenedores.
+
+**Resultado esperado.** El proyecto levanta con el README, la prueba corta funciona y podés contar la arquitectura sin leer el informe palabra por palabra.
+
+**Git.** El commit de la entrega, si hubo correcciones del README o del informe:
+
+```text
+Cerrar el informe con las pruebas hechas y los pasos que realmente levantan el proyecto.
+```
+
+**Cierre.** La entrega separa tres hechos: la aplicación del aula, los datos en el volumen y la recuperación por reinicio del mismo contenedor, con el límite de que no hay una segunda copia.
+
+## Qué haremos primero, y por qué
+
+El viernes 30 se escriben las tablas de preguntas y actividades.
+
+Docker ya está en marcha con tres contenedores. Seguir por más infraestructura no enseña el hueco que falta. El hueco es el aula: sin actividades separadas, la nube actual mezcla todas las palabras en una sola lista y no hay nada que el profesor administre. Construir el panel el sábado, encima de tablas que todavía no existen, obligaría a rehacerlo. Por eso la base va primero, la contraseña después y la nube de los alumnos el domingo. El lunes queda entero para las pruebas que pide la facultad.
