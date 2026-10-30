@@ -1,52 +1,89 @@
-# Conceptos de Docker en este proyecto
+# Conceptos
 
-Estos nombres se usan para lo que ya se construyó. No describen una caída medida: eso queda para `docs/PRUEBAS.md`.
+Glosario del proyecto. Cada definición corresponde a algo que ya usamos o que el plan nombra para los próximos días. Si una prueba todavía no se hizo, el concepto lo dice.
+
+## Docker
+
+Docker es el programa que construye imágenes y pone contenedores en marcha en esta Ubuntu. No es la aplicación Lluvia de Palabras. La aplicación corre adentro de los contenedores.
 
 ## Imagen
 
-Una imagen es el paquete inmutable: el programa, sus librerías y la orden de arranque. No atiende pedidos. Se puede usar para crear muchos contenedores.
+Una imagen es el paquete quieto: el programa, sus librerías y la orden de arranque. No atiende pedidos. Sirve de molde para crear contenedores.
 
-En esta máquina, después de `docker compose build`, hay dos imágenes de este proyecto:
+En esta máquina, después de `docker compose build`, hay dos imágenes propias:
 
 | Imagen | De dónde sale |
 | --- | --- |
-| `jugando-con-docker-web` | `frontend/Dockerfile`. Node 22 compila el sitio y Nginx lo deja listo para servirlo |
+| `jugando-con-docker-web` | `frontend/Dockerfile`. Node 22 compila el sitio y Nginx lo sirve |
 | `jugando-con-docker-api` | `backend/Dockerfile`. Node 22 con Express, Socket.IO y el cliente de PostgreSQL |
 
-La base no tiene Dockerfile propio. Usa la imagen oficial `postgres:16`.
+La base usa la imagen oficial `postgres:16`. No tiene Dockerfile propio.
 
 ## Contenedor
 
-Un contenedor es una imagen en ejecución. Se puede detener y volver a crear. La imagen no cambia por eso.
+Un contenedor es una imagen en ejecución. Se puede detener y volver a crear. Eso no modifica la imagen.
 
-`docker compose ps` muestra tres contenedores de este proyecto:
+`docker compose ps` muestra tres contenedores de este proyecto: `web`, `api` y `db`. Los nombres largos que muestra Docker llevan el prefijo `jugando-con-docker-`.
 
-| Contenedor | Imagen | Qué hace |
-| --- | --- | --- |
-| `jugando-con-docker-web-1` | `jugando-con-docker-web` | Sirve la pantalla en el puerto 8088 |
-| `jugando-con-docker-api-1` | `jugando-con-docker-api` | Recibe palabras y avisa a las pestañas |
-| `jugando-con-docker-db-1` | `postgres:16` | Guarda las filas |
+## Docker Compose
 
-El contenedor de la API se reinició y la palabra `imagen` siguió en la base. El proceso nuevo volvió a leer la tabla. La imagen no se volvió a construir para eso.
-
-## Volumen
-
-Un volumen es un disco de Docker, fuera de la carpeta del repositorio. El de Compose se llama `jugando-con-docker_pgdata` y está montado en los datos de PostgreSQL.
-
-Detener o recrear el contenedor `db` no borra ese volumen. Borrarlo sí borra las palabras. El comando es `docker compose down -v`. No se usa sin decir antes qué va a borrar.
+Compose lee `docker-compose.yml` y levanta varios contenedores juntos, con una red y un volumen. El comando de todos los días es `docker compose up --build`.
 
 ## Red
 
-Compose crea una red interna para estos tres contenedores. La API habla con la base por el nombre `db`, en el puerto 5432 de esa red. Ese nombre no existe en Ubuntu.
+Compose crea una red interna para estos tres contenedores. Dentro de esa red, la API llega a la base usando el nombre `db` y el puerto 5432. Ese nombre no existe en Ubuntu: existe solo entre los contenedores.
 
-El navegador no entra a esa red. Habla solo con `web`, en el puerto 8088. Nginx reenvía `/api` y Socket.IO hacia el contenedor `api`. El puerto 4000 de la API no está publicado en la máquina.
+El navegador habla con el puerto 8088 de `web`. Nginx reenvía `/api` y Socket.IO al contenedor `api`. El puerto 4000 no está publicado en la máquina.
 
-PostgreSQL sí tiene un puerto publicado, y solo en esta máquina: `127.0.0.1:5435`. No queda abierto hacia el resto de la red.
+PostgreSQL publica el 5432 del contenedor en `127.0.0.1:5435`. Ese puerto responde en esta computadora y no queda abierto al resto de la red.
 
-## Reinicio
+## Volumen
 
-`restart: unless-stopped` le pide a Docker que vuelva a crear el mismo contenedor si el proceso termina o si se reinicia la computadora. Es el mismo servicio, con una interrupción corta. No es una segunda copia atendiendo mientras la primera está caída.
+Un volumen es un lugar de almacenamiento que Docker administra aparte de la carpeta del contenedor. El de este proyecto se llama `jugando-con-docker_pgdata` y guarda los archivos de PostgreSQL.
+
+Sirve porque el disco de un contenedor es descartable. Si los datos vivieran solo ahí, se irían al borrar el contenedor.
+
+Qué se espera en cada caso:
+
+| Acción | El contenedor | El volumen |
+| --- | --- | --- |
+| Detenerlo (`docker compose stop db`) | Se apaga. Los datos no se usan hasta que vuelve | Sigue |
+| Volver a iniciarlo | Arranca y abre los mismos archivos | Sigue |
+| Borrar el contenedor y crearlo de nuevo, sin tocar el volumen | Es un contenedor nuevo, con la misma imagen | Sigue, y la base vuelve a ver las filas |
+| `docker compose down -v` o `docker volume rm` | Se van los contenedores de este proyecto | Se borra. Las palabras también |
+
+Esa última fila no se ejecuta para «probar». Borra los datos de verdad.
+
+Un volumen no reemplaza a una copia de seguridad. Vive en esta máquina, asociado a Docker. No hay otra copia en un disco distinto ni en otro servidor. Perder el volumen, o el disco, pierde las preguntas y las respuestas.
+
+La prueba de borrar y recrear el contenedor `db` sin borrar el volumen está pendiente. El procedimiento está en [PRUEBAS.md](PRUEBAS.md).
+
+## Reinicio automático
+
+`restart: unless-stopped` le dice a Docker: si este contenedor se cae solo, volvé a iniciarlo; si yo lo detuve a propósito, dejalo detenido hasta que yo lo levante; si reinicio la computadora, volvé a iniciarlo.
+
+Es una recuperación del mismo contenedor. Hay un intervalo en el que ese servicio no responde. No aparece una segunda copia mientras tanto.
 
 ## Réplica
 
-Una réplica sería otra instancia del mismo servicio, viva al mismo tiempo. Este proyecto no la tiene. La duda con la consigna sigue abierta y está escrita en `docs/PLAN_DIARIO.md`.
+Una réplica es otra instancia del mismo servicio, encendida al mismo tiempo. Este proyecto no tiene réplicas. La diferencia con el reinicio está explicada en [ARQUITECTURA.md](ARQUITECTURA.md).
+
+## Variable de entorno
+
+Una variable de entorno es un dato que el proceso recibe al arrancar, fuera del código. La contraseña de PostgreSQL ya funciona así: está en `.env` en esta máquina y Compose se la pasa al contenedor. `.env` no se sube a GitHub. `.env.example` muestra los nombres, con valores falsos.
+
+La contraseña del profesor va a usar el mismo mecanismo, con el nombre `TEACHER_PASSWORD`. Todavía no está en `.env.example` ni en el servidor. Se agrega el día en que se construya el panel.
+
+## Cookie de sesión
+
+Está prevista, no implementada. Es un dato que el navegador reenvía solo al sitio. `HttpOnly` significa que el JavaScript de la página no puede leerla. Así la contraseña no queda guardada en React. El servidor anota la sesión en PostgreSQL para que siga valiendo si el contenedor `api` se reinicia. El detalle está en [ARQUITECTURA.md](ARQUITECTURA.md).
+
+## Git y GitHub
+
+Git guarda el historial del proyecto en esta computadora. Cada commit es una versión con un mensaje.
+
+GitHub guarda una copia de ese historial en internet. El remoto de este proyecto es `origin`, en https://github.com/lisnazarena/jugando-con-docker
+
+Una rama es una línea de commits. La rama actual se llama `feature/contenedores`.
+
+`git status` muestra qué cambió y todavía no está en un commit. `git diff` muestra el contenido de ese cambio. `git log` muestra los commits ya hechos.
