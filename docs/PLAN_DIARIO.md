@@ -49,6 +49,10 @@ Todavía no está:
 - Informe con evidencias.
 - Repositorio público. Hoy el remoto existe; hacerlo público es una decisión de la entrega.
 
+## Hecho el 31 de octubre
+
+El trabajo del viernes se hizo este sábado. `db/init/002_banco.sql` crea las tablas del banco, de las actividades y de las sesiones. Hay 7 categorías y 5 preguntas de ejemplo. La API no las usa. La comprobación con dos actividades de mentira quedó en [PRUEBAS.md](PRUEBAS.md): esas filas se deshicieron y no quedaron en la base. La tabla `words` sigue alimentando la nube.
+
 En esta Ubuntu, comprobado de nuevo el 29 de octubre:
 
 | Herramienta | Estado |
@@ -146,6 +150,8 @@ No se sube a GitHub hasta que lo pidas.
 **Cierre.** Queda claro qué ya existe, qué falta y por qué el viernes no empieza por Docker. Docker ya levanta los tres servicios. Falta el modelo del aula y, después, las pruebas que lo demuestran.
 
 ## Viernes 30 de octubre — Preguntas y actividades en la base
+
+Hecho el sábado 31 de octubre. El resultado está en [PRUEBAS.md](PRUEBAS.md).
 
 **Objetivo.** Tener en PostgreSQL el banco y las actividades, con datos de ejemplo, sin mezclar las respuestas de dos clases. La pantalla de la nube actual sigue abriendo.
 

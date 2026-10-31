@@ -56,6 +56,12 @@ Esa última fila no se ejecuta para «probar». Borra los datos de verdad.
 
 Un volumen no reemplaza a una copia de seguridad. Vive en esta máquina, asociado a Docker. No hay otra copia en un disco distinto ni en otro servidor. Perder el volumen, o el disco, pierde las preguntas y las respuestas.
 
+## Script de inicio
+
+La imagen de PostgreSQL, la primera vez que el volumen está vacío, ejecuta los archivos `.sql` de `db/init/` en orden alfabético. En este proyecto eso crea `words` y, después, el banco.
+
+Si el volumen ya tiene datos, PostgreSQL no vuelve a ejecutar esos archivos al reiniciar el contenedor. Un archivo nuevo hay que aplicarlo a mano, como se hizo el 31 de octubre con `002_banco.sql`. Si no, la base vieja sigue sin las tablas nuevas aunque el archivo ya esté en la carpeta.
+
 La prueba de borrar y recrear el contenedor `db` sin borrar el volumen está pendiente. El procedimiento está en [PRUEBAS.md](PRUEBAS.md).
 
 ## Reinicio automático
