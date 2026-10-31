@@ -67,15 +67,15 @@ No está medido qué pasa al detener cada contenedor ni al recrear `db`. Esas pr
 
 La pantalla actual no tiene panel de profesor. La pregunta está fija en el código del frontend. Todas las palabras comparten una sola lista.
 
-## Modelo previsto, todavía no construido
+## Modelo de datos
 
-Esto es el diseño para los próximos días. No hay tablas ni pantallas de esto en el repositorio.
+Las tablas existen desde el 31 de octubre de 2026. Están en `db/init/002_banco.sql` y ya se aplicaron al volumen actual. La API y la pantalla no las leen: la nube sigue usando `words`.
 
 Una **pregunta** pertenece al banco. Se puede reutilizar.
 
 Una **actividad** es una ejecución de esa pregunta en el aula. Guarda una copia del texto de la pregunta en el momento de iniciarla. Si después el profesor edita la pregunta del banco, las actividades viejas conservan el texto con el que se hicieron. Las respuestas de cada actividad quedan en filas propias.
 
-Tablas previstas:
+Tablas:
 
 | Tabla | Qué guarda |
 | --- | --- |
