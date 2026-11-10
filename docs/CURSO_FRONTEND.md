@@ -1,5 +1,7 @@
 # Curso: cómo funciona el frontend
 
+Este curso explica la primera nube, la de la pregunta fija. Desde el 4 de noviembre la pantalla de clase es otra: `/profesor` para el panel y `/a/` más el código para el alumno. Los archivos de esa versión son `Profesor.jsx`, `Aula.jsx` y `api.js`. Lo que sigue describe cómo estaba armada la nube que ahora vive dentro de la actividad.
+
 Este texto explica la carpeta `frontend/` para alguien que abre el proyecto por primera vez. Se puede leer de arriba hacia abajo. Cada lección usa solo lo que ya se explicó antes.
 
 Al terminar vas a poder señalar un archivo y decir qué hace, y vas a poder seguir una palabra desde el teclado hasta el lugar donde aparece en la nube.

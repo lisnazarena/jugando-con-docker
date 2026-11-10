@@ -1,12 +1,12 @@
 # Informe final
 
-Borrador del 29 de octubre de 2026. No cita evidencias, porque las pruebas de [PRUEBAS.md](PRUEBAS.md) todavía no se ejecutaron. Cada sección se completa con lo observado. Si algo no llegó a construirse, se escribe como límite, no como función disponible.
+Cierre del 4 de noviembre de 2026. Cita lo que se vio en [PRUEBAS.md](PRUEBAS.md). El repositorio todavía no se pasó a público. El video se dice con palabras propias; este texto no lo reemplaza.
 
 ## 1. Problema
 
 Lluvia de Palabras sirve para una actividad corta en el aula. El profesor propone una pregunta. Los alumnos responden con una palabra. La pantalla muestra una nube en el momento.
 
-Completar con una captura de la nube cuando la prueba de dos navegadores esté hecha.
+El 4 de noviembre dos pestañas abrieron la actividad `tmrb92`. La palabra «imagen» pasó a 2 veces en las dos, sin recargar. Al cerrar la actividad el formulario quedó deshabilitado y la fila siguió en PostgreSQL.
 
 ## 2. Qué es Docker y qué es un contenedor
 
@@ -25,7 +25,7 @@ Texto para decir con palabras propias, después de haberlo usado:
 | `api` | Recibe las palabras y avisa a los navegadores |
 | `db` | Guarda las filas en PostgreSQL |
 
-Completar con la captura de `docker compose ps` y con el archivo `docker-compose.yml`.
+El 4 de noviembre `docker compose ps` mostró `web`, `api` y `db` en marcha. La definición está en `docker-compose.yml`.
 
 ## 4. Cómo se comunican
 
@@ -33,7 +33,7 @@ El navegador solo abre el puerto 8088. Nginx, dentro de `web`, habla con `api` p
 
 ## 5. Dónde están los datos
 
-Los archivos de PostgreSQL están en el volumen `pgdata`. Completar con la captura de `docker volume ls` y con el resultado de la prueba de recrear el contenedor `db`.
+Los archivos de PostgreSQL están en el volumen `jugando-con-docker_pgdata`. El 4 de noviembre se borró el contenedor `db`, se creó otro y el volumen siguió. Las dos actividades y la palabra «imagen» con cantidad 2 estaban igual. Desde el stop hasta que la base quedó healthy pasaron unos 6 segundos.
 
 Aclaración fija, aunque la prueba salga bien: el volumen no es una copia de seguridad. Es el disco de datos de Docker en esta máquina.
 
@@ -43,37 +43,43 @@ Mecanismo configurado: `restart: unless-stopped`. Docker vuelve a iniciar el mis
 
 No hay réplica. No hay una segunda copia atendiendo durante la caída. Tres contenedores, uno por servicio, no alcanzan para eso sin dejar de separar sitio, API y base, o sin pasar a otra herramienta. El detalle está en [ARQUITECTURA.md](ARQUITECTURA.md).
 
-Completar con los tiempos y las capturas de la prueba de fallo. Si el profesor confirma que pedía una segunda instancia, este informe tiene que decir que la entrega implementa reinicio y deja la réplica explicada como alternativa no construida, salvo que para esa fecha ya se haya cambiado el diseño.
+Lo visto el 4 de noviembre:
+
+- `docker compose stop web` dejó el contenedor detenido. El puerto 8088 rechazó la conexión. `docker compose start web` devolvió HTTP 200 en cerca de 1 segundo. `RestartCount` no subió: fue un arranque pedido a mano.
+- `docker kill` sobre `web`, `api` y `db` también los dejó detenidos, con salida 137. La política no los levantó.
+- Cuando el proceso de `api` terminó por SIGTERM, Docker inició el mismo contenedor en 0,68 segundos. La cookie del profesor seguía valiendo, porque la fila está en `sesiones` y no en la memoria del proceso.
+- Cuando el proceso de `db` terminó por SIGTERM, `RestartCount` pasó a 1 y las filas siguieron.
+- `nginx -s quit` dejó `web` en `running` pero la página no respondía. Hubo que usar `docker compose restart web`.
+
+No hay una segunda instancia. Si el profesor confirma que pedía una réplica, este informe dice que la entrega implementa reinicio del mismo contenedor y deja la réplica explicada como alternativa no construida.
 
 ## 7. Funcionamiento previsto de la aplicación
 
-Se redacta cuando existan el panel y las actividades. Hasta entonces, lo que se puede mostrar es la nube con la pregunta fija.
+Recorrido el 4 de noviembre:
 
-Lista para ir marcando:
-
-- El profesor entra con una contraseña que no está en el código ni en React.
-- Administra un banco de preguntas en PostgreSQL.
-- Inicia y cierra una actividad.
-- El alumno entra por un enlace, sin cuenta.
-- La nube se actualiza en más de un navegador.
-- Dos actividades de la misma pregunta no mezclan respuestas.
-- Editar la pregunta no reescribe el historial.
-- Sin la sesión del profesor, la API rechaza administrar.
+- El profesor entra con la contraseña de `TEACHER_PASSWORD`. No está en el código ni en el JavaScript que entrega Nginx.
+- Administra un banco de preguntas en PostgreSQL. Hay 7 categorías y las preguntas de ejemplo.
+- Inicia y cierra una actividad. `tmrb92` quedó cerrada, con «imagen» dos veces.
+- El alumno entra por `/a/` y el código, sin cuenta.
+- La nube se actualizó en dos pestañas.
+- Una segunda actividad de la misma pregunta empezó sin palabras.
+- Editar la pregunta no reescribió el texto de la actividad ya hecha.
+- Sin la cookie, crear una pregunta y finalizar una actividad respondieron 401.
 
 ## 8. Capturas pedidas
 
 | # | Qué mostrar | Archivo o nota |
 | --- | --- | --- |
-| 1 | Estructura del proyecto | Pendiente |
-| 2 | `docker-compose.yml` | Pendiente |
-| 3 | Los tres contenedores en ejecución | Pendiente |
-| 4 | La aplicación en el navegador | Pendiente |
-| 5 | El panel del profesor | Pendiente |
-| 6 | La nube en dos navegadores | Pendiente |
-| 7 | El volumen | Pendiente |
-| 8 | Los datos después de recrear el contenedor | Pendiente |
-| 9 | El fallo y la recuperación | Pendiente |
-| 10 | El repositorio público | Pendiente |
+| 1 | Estructura del proyecto | Falta la captura. El árbol está en el repositorio |
+| 2 | `docker-compose.yml` | Falta la captura. El archivo está en la raíz |
+| 3 | Los tres contenedores en ejecución | Visto con `docker compose ps` el 4 de noviembre. Falta la captura |
+| 4 | La aplicación en el navegador | Vista en http://127.0.0.1:8088/a/tmrb92. Falta la captura |
+| 5 | El panel del profesor | Visto en `/profesor`. Falta la captura |
+| 6 | La nube en dos navegadores | Vista: «imagen» a 2 veces en dos pestañas. Falta la captura |
+| 7 | El volumen | `jugando-con-docker_pgdata` siguió después de recrear `db`. Falta la captura |
+| 8 | Los datos después de recrear el contenedor | Las mismas dos actividades y «imagen» con cantidad 2. Falta la captura |
+| 9 | El fallo y la recuperación | Anotado en [PRUEBAS.md](PRUEBAS.md). Falta la captura |
+| 10 | El repositorio público | Pendiente. El remoto sigue como estaba |
 
 ## 9. Guion corto del video
 
