@@ -14,6 +14,7 @@ services:
       API_PORT: 4000
       WEB_PORT: ${WEB_PORT:-8088}
       DATABASE_URL: postgresql://${POSTGRES_USER:-lluvia}:${POSTGRES_PASSWORD:-cambiar-esta-clave}@db:5432/${POSTGRES_DB:-lluvia}
+      TEACHER_PASSWORD: ${TEACHER_PASSWORD:-aula-de-prueba}
     depends_on:
       db:
         condition: service_healthy

@@ -6,15 +6,12 @@ Un profesor plantea una pregunta. Los alumnos envían una palabra desde el celul
 
 ## Qué hay hoy
 
-Hay una primera versión que ya se puede abrir:
-
 - Tres contenedores: sitio, API y PostgreSQL.
-- Una sola pregunta en la pantalla, escrita en el código: «Definí Docker en una sola palabra.»
-- Las palabras de esa nube se guardan en la tabla `words`, dentro de un volumen de Docker.
-- En la misma base ya existen las tablas del banco y de las actividades, con preguntas de ejemplo. La pantalla todavía no las usa.
-- Si un contenedor se detiene, Docker está configurado para volver a iniciar ese mismo contenedor.
-
-Todavía no existen el panel del profesor, la contraseña ni el enlace del alumno. El cronograma está en [docs/PLAN_DIARIO.md](docs/PLAN_DIARIO.md).
+- El profesor entra en http://127.0.0.1:8088/profesor con la contraseña de `TEACHER_PASSWORD`. Esa clave está en `.env`, no en el código.
+- El panel lista, crea, edita y borra preguntas, inicia una actividad y la cierra.
+- Cada actividad copia el texto de la pregunta y tiene su propio enlace, `/a/` y un código. Los alumnos entran sin cuenta.
+- Las palabras de una actividad se guardan en la tabla `palabras`, dentro del volumen de Docker. La tabla `words` quedó de la primera nube y la pantalla ya no la usa.
+- Si el proceso termina solo, Docker vuelve a iniciar ese mismo contenedor. Si se lo detiene a propósito, queda detenido. El detalle de lo visto está en [docs/PRUEBAS.md](docs/PRUEBAS.md).
 
 ## Tecnologías
 

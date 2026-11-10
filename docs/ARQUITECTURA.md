@@ -63,13 +63,13 @@ Conclusión que se puede decir en la entrega: los tres contenedores demuestran l
 - PostgreSQL escucha en `127.0.0.1:5435`. El puerto 4000 de la API no está publicado en Ubuntu.
 - La contraseña de la base sale de `.env`. Compose arma `DATABASE_URL` con el nombre `db` y el puerto 5432.
 
-No está medido qué pasa al detener cada contenedor ni al recrear `db`. Esas pruebas están en [PRUEBAS.md](PRUEBAS.md) y siguen pendientes.
+El 4 de noviembre se midió en [PRUEBAS.md](PRUEBAS.md). Recrear `db` sin borrar el volumen conservó las filas. `docker compose stop` y `docker kill` dejaron el contenedor detenido. Cuando el proceso de `db` o el de `api` terminó solo, Docker volvió a iniciar ese mismo contenedor.
 
-La pantalla actual no tiene panel de profesor. La pregunta está fija en el código del frontend. Todas las palabras comparten una sola lista.
+La pantalla tiene panel en `/profesor` y la nube de cada actividad en `/a/` más el código. La pregunta del aula es la copia guardada en la actividad, no un texto fijo del frontend.
 
 ## Modelo de datos
 
-Las tablas existen desde el 31 de octubre de 2026. Están en `db/init/002_banco.sql` y ya se aplicaron al volumen actual. La API y la pantalla no las leen: la nube sigue usando `words`.
+Las tablas existen desde el 31 de octubre de 2026. Están en `db/init/002_banco.sql`. Desde el 4 de noviembre la API y la pantalla las usan. La tabla `words` queda de la primera nube y ya no alimenta la pantalla.
 
 Una **pregunta** pertenece al banco. Se puede reutilizar.
 
@@ -85,7 +85,7 @@ Tablas:
 | `palabras` | Texto y cantidad, únicos dentro de una actividad |
 | `sesiones` | La huella de la sesión del profesor, no la contraseña |
 
-La contraseña del profesor irá en la variable `TEACHER_PASSWORD`, solo en el entorno del contenedor `api`. El navegador la envía una vez. Si coincide, la API crea un token al azar, guarda su huella en `sesiones` y devuelve una cookie `HttpOnly`. El JavaScript de React no puede leer esa cookie. Las rutas y los eventos de Socket.IO del panel exigen esa cookie. Enviar una palabra a una actividad abierta no la exige.
+La contraseña del profesor está en la variable `TEACHER_PASSWORD`, solo en el entorno del contenedor `api`. El navegador la envía una vez. Si coincide, la API crea un token al azar, guarda su huella en `sesiones` y devuelve una cookie `HttpOnly`. El JavaScript de React no puede leer esa cookie. Las rutas del panel exigen esa cookie. Enviar una palabra a una actividad abierta no la exige. Un alumno no puede abrir ni cerrar la actividad por Socket.IO: esos avisos los emite el servidor después de un pedido del profesor.
 
 Si se borra una pregunta del banco, la actividad conserva `texto_pregunta`. La relación con la pregunta puede quedar vacía. El historial no se reescribe.
 
@@ -93,12 +93,17 @@ Los alumnos entran por un enlace con el código de la actividad. No tienen cuent
 
 ## Qué pasa al detener cada contenedor
 
-Esto es la expectativa. Hay que observarla y anotarla en las pruebas. Hasta entonces no es un resultado.
+Esto es lo que se vio el 4 de noviembre. Los tiempos están en [PRUEBAS.md](PRUEBAS.md).
 
-| Se detiene | Qué deja de andar | Qué sigue guardado |
-| --- | --- | --- |
-| `web` | La página, hasta que Docker lo inicia de nuevo | Las filas en el volumen |
-| `api` | Enviar palabras y ver la nube en vivo | Las filas en el volumen |
-| `db` | Leer y escribir, hasta que PostgreSQL vuelve | Los archivos del volumen, si nadie lo borra |
+| Qué se hizo | Qué pasó |
+| --- | --- |
+| `docker compose stop web` | La página dejó de existir en el puerto 8088. El contenedor quedó `exited` y no volvió solo. `docker compose start web` lo trajo en cerca de 1 segundo |
+| `docker kill` sobre `web`, `api` o `db` | El contenedor quedó detenido con salida 137. `RestartCount` no subió. Hay que volver a iniciarlo a mano |
+| El proceso de `api` terminó al recibir SIGTERM | En menos de 1 segundo Docker inició el mismo contenedor. La cookie del profesor seguía valiendo |
+| El proceso de `db` terminó al recibir SIGTERM | `RestartCount` pasó a 1 y PostgreSQL volvió. Las filas siguieron |
+| Se borró el contenedor `db` y se creó otro, sin borrar el volumen | En unos 6 segundos quedó healthy. Las actividades y las palabras eran las mismas |
+| `nginx -s quit` dentro de `web` | El contenedor siguió en `running`, pero la página dejó de responder. La política no lo reemplazó porque el proceso no había terminado. `docker compose restart web` devolvió el HTTP 200 |
+
+`unless-stopped` vuelve a iniciar el mismo contenedor cuando el proceso termina solo. Un `stop` o un `kill` hechos con Docker cuentan como una detención pedida por nosotros, y el contenedor queda quieto. No hay una segunda copia atendiendo durante el corte.
 
 `depends_on` con el control de salud de `db` solo ordena el primer arranque. No mantiene el servicio disponible durante una caída.

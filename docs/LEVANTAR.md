@@ -21,9 +21,9 @@ cd jugando-con-docker
 cp .env.example .env
 ```
 
-La clave `cambiar-esta-clave` es la de práctica. No subas el `.env`.
+La clave `cambiar-esta-clave` es la de la base, de práctica. `TEACHER_PASSWORD` es la del panel. En el ejemplo vale `aula-de-prueba`; en esta máquina vale lo que ya esté escrito en `.env`. No subas el `.env`.
 
-Compose usa de ese archivo el usuario, la clave, el nombre de la base y los puertos. La línea `DATABASE_URL` con `127.0.0.1` es para `npm run dev` en Ubuntu. Dentro de los contenedores, Compose arma otra dirección, con el nombre `db`.
+Compose usa de ese archivo el usuario, la clave, el nombre de la base, los puertos y la contraseña del profesor. La línea `DATABASE_URL` con `127.0.0.1` es para `npm run dev` en Ubuntu. Dentro de los contenedores, Compose arma otra dirección, con el nombre `db`.
 
 ## 3. Levantar los tres servicios
 
@@ -35,7 +35,7 @@ docker compose up --build
 
 La primera vez descarga imágenes y compila la pantalla. Puede tardar. Cuando los tres servicios digan que arrancaron, abrí http://127.0.0.1:8088.
 
-Enviá una palabra. En otra pestaña tiene que aparecer sin recargar.
+Entrá a http://127.0.0.1:8088/profesor, iniciá una actividad y abrí el enlace en otra pestaña. Una palabra enviada ahí tiene que aparecer en la otra sin recargar.
 
 En otra terminal, desde la misma carpeta:
 
@@ -48,10 +48,10 @@ Tiene que listar `web`, `api` y `db`.
 ## 4. Ver las filas
 
 ```bash
-docker compose exec db psql -U lluvia -d lluvia -c 'SELECT text, count, question, created_at FROM words ORDER BY created_at;'
+docker compose exec db psql -U lluvia -d lluvia -c 'SELECT actividades.codigo, palabras.texto, palabras.cantidad FROM palabras JOIN actividades ON actividades.id = palabras.actividad_id ORDER BY palabras.created_at;'
 ```
 
-Cada fila es una palabra distinta. `count` es cuántas veces se envió. Si no hay filas, nadie envió todavía. La tabla igual existe: el SQL de `db/init/` corre cuando el volumen está vacío.
+Cada fila es una palabra de una actividad. `cantidad` es cuántas veces se envió. Si no hay filas, nadie envió todavía en una actividad. La tabla `words` es la de la primera nube y la pantalla ya no la usa. El SQL de `db/init/` corre cuando el volumen está vacío.
 
 ## La próxima vez
 

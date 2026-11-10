@@ -1,5 +1,8 @@
 import pg from 'pg'
 
+// Primera versión de la nube: una sola lista en la tabla words.
+// La actividad del aula usa banco.js y la tabla palabras.
+
 const QUESTION = 'Definí Docker en una sola palabra.'
 
 export const pool = new pg.Pool({

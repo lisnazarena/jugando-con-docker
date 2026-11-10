@@ -51,7 +51,19 @@ Todavía no está:
 
 ## Hecho el 31 de octubre
 
-El trabajo del viernes se hizo este sábado. `db/init/002_banco.sql` crea las tablas del banco, de las actividades y de las sesiones. Hay 7 categorías y 5 preguntas de ejemplo. La API no las usa. La comprobación con dos actividades de mentira quedó en [PRUEBAS.md](PRUEBAS.md): esas filas se deshicieron y no quedaron en la base. La tabla `words` sigue alimentando la nube.
+El trabajo del viernes se hizo este sábado. `db/init/002_banco.sql` crea las tablas del banco, de las actividades y de las sesiones. Hay 7 categorías y 5 preguntas de ejemplo. La API no las usa. La comprobación con dos actividades de mentira quedó en [PRUEBAS.md](PRUEBAS.md): esas filas se deshicieron y no quedaron en la base. La tabla `words` sigue alimentando la nube. Eso cambia el 4 de noviembre: desde entonces la pantalla usa las actividades.
+
+## Hecho el 4 de noviembre
+
+Se puso al día el tramo que había quedado en el sábado 31. En el mismo día se recorrió también el domingo, el lunes y el cierre escrito del martes. No se publicó el repositorio.
+
+- `TEACHER_PASSWORD` entra al contenedor `api` desde `.env`. `.env.example` muestra el nombre con el valor falso `aula-de-prueba`.
+- El panel está en `/profesor`. Sin la cookie `sesion`, la API responde 401. La cookie es `HttpOnly`. La fila está en `sesiones`.
+- El alumno abre `/a/` más el código. La nube de esa actividad se actualiza en otra pestaña sin recargar. Al cerrarla, el formulario deja de enviar y las palabras siguen.
+- Editar la pregunta del banco no cambia el texto copiado en la actividad.
+- Se recreó el contenedor `db` sin borrar el volumen `jugando-con-docker_pgdata`. Las filas siguieron. El detalle y los tiempos están en [PRUEBAS.md](PRUEBAS.md).
+- `docker compose stop` y `docker kill` dejaron el contenedor detenido. Cuando el proceso de `db` y el de `api` terminaron solos, `unless-stopped` volvió a iniciar ese mismo contenedor.
+- [INFORME_FINAL.md](INFORME_FINAL.md) cuenta eso. Falta decirlo con palabras propias en el video y, si se decide, pasar el remoto a público.
 
 En esta Ubuntu, comprobado de nuevo el 29 de octubre:
 

@@ -1,5 +1,7 @@
 # Curso: cómo funciona la API
 
+Este curso explica la primera API, la de la tabla `words`. Desde el 4 de noviembre el servidor de clase está en `server.js`, `banco.js` y `sesion.js`: el panel exige la cookie y las palabras se guardan por actividad. Lo que sigue sirve para entender el camino de un pedido, con la lista global que la pantalla ya no usa.
+
 Este texto explica la carpeta `backend/` para alguien que ya leyó [el curso del frontend](CURSO_FRONTEND.md). Se puede leer de arriba hacia abajo. Cada lección usa solo lo que ya se explicó antes.
 
 Al terminar vas a poder señalar un archivo y decir qué hace, y vas a poder seguir una palabra desde el `curl` hasta la fila que la guarda.

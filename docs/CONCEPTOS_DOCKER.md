@@ -62,7 +62,7 @@ La imagen de PostgreSQL, la primera vez que el volumen está vacío, ejecuta los
 
 Si el volumen ya tiene datos, PostgreSQL no vuelve a ejecutar esos archivos al reiniciar el contenedor. Un archivo nuevo hay que aplicarlo a mano, como se hizo el 31 de octubre con `002_banco.sql`. Si no, la base vieja sigue sin las tablas nuevas aunque el archivo ya esté en la carpeta.
 
-La prueba de borrar y recrear el contenedor `db` sin borrar el volumen está pendiente. El procedimiento está en [PRUEBAS.md](PRUEBAS.md).
+El 4 de noviembre se borró el contenedor `db` y se creó otro, sin borrar el volumen. Las actividades y las palabras siguieron. El procedimiento y los tiempos están en [PRUEBAS.md](PRUEBAS.md).
 
 ## Reinicio automático
 
@@ -78,11 +78,11 @@ Una réplica es otra instancia del mismo servicio, encendida al mismo tiempo. Es
 
 Una variable de entorno es un dato que el proceso recibe al arrancar, fuera del código. La contraseña de PostgreSQL ya funciona así: está en `.env` en esta máquina y Compose se la pasa al contenedor. `.env` no se sube a GitHub. `.env.example` muestra los nombres, con valores falsos.
 
-La contraseña del profesor va a usar el mismo mecanismo, con el nombre `TEACHER_PASSWORD`. Todavía no está en `.env.example` ni en el servidor. Se agrega el día en que se construya el panel.
+La contraseña del profesor usa el mismo mecanismo, con el nombre `TEACHER_PASSWORD`. `.env.example` trae el valor falso `aula-de-prueba`. La de esta máquina es la que quedó en `.env`. El contenedor `api` la recibe al arrancar. El JavaScript no la incluye.
 
 ## Cookie de sesión
 
-Está prevista, no implementada. Es un dato que el navegador reenvía solo al sitio. `HttpOnly` significa que el JavaScript de la página no puede leerla. Así la contraseña no queda guardada en React. El servidor anota la sesión en PostgreSQL para que siga valiendo si el contenedor `api` se reinicia. El detalle está en [ARQUITECTURA.md](ARQUITECTURA.md).
+Es un dato que el navegador reenvía solo al sitio. `HttpOnly` significa que el JavaScript de la página no puede leerla. Así la contraseña no queda guardada en React. El servidor guarda en `sesiones` la huella de un número al azar, no la contraseña. El 4 de noviembre, después de que el proceso de `api` terminó y Docker lo inició de nuevo, esa cookie seguía entrando al panel. El detalle está en [ARQUITECTURA.md](ARQUITECTURA.md).
 
 ## Git y GitHub
 
