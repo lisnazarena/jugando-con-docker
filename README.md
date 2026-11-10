@@ -50,6 +50,7 @@ La pantalla abre en http://127.0.0.1:8088
 
 | Archivo | Para qué sirve |
 | --- | --- |
+| [docs/AULA.md](docs/AULA.md) | Levantar la clase y qué hacen el profesor y los alumnos |
 | [docs/PLAN_DIARIO.md](docs/PLAN_DIARIO.md) | Cronograma hasta el 3 de noviembre |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Los tres contenedores y cómo se comunican |
 | [docs/CONCEPTOS_DOCKER.md](docs/CONCEPTOS_DOCKER.md) | Glosario de lo que vamos aprendiendo |
